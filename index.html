@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>霓虹防线 · 飞机大战</title>
+<style>
+  :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#292568,transparent 34%),#05061a;color:#eef;font-family:"PingFang SC","Microsoft YaHei",sans-serif}.page{width:min(850px,calc(100% - 28px));margin:auto;padding:22px}.layout{display:grid;grid-template-columns:420px 267px;gap:18px}.card{background:#10133ddd;border:1px solid #7189df55;border-radius:18px;padding:14px}.arena{position:relative;aspect-ratio:2/3;border:1px solid #58e7ff;border-radius:12px;overflow:hidden}canvas{width:100%;height:100%;display:block}.side{display:grid;gap:13px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat,.buff{padding:10px;border:1px solid #7189df55;border-radius:9px}.stat strong{display:block;font:800 22px Menlo,monospace}.best{color:#ffc75a}.lives{color:#ff71b5;text-shadow:0 0 10px #ff54ae}.state-ready{color:#aeb9ff}.state-running{color:#5ef3ff;text-shadow:0 0 10px #58e7ff}.state-paused{color:#ffc75a;text-shadow:0 0 10px #ffc75a}.buff-shield b{color:#5ef3ff}.buff-spread b{color:#c9a9ff}.buff-double b{color:#ffcf62}.row,.buff{display:flex;justify-content:space-between;margin-top:9px}.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.btn,.pad button{border:1px solid #58e7ff;border-radius:8px;background:#193368;color:#eef;min-height:42px;font:700 15px "PingFang SC","Microsoft YaHei",sans-serif}.btn.main{background:linear-gradient(135deg,#67e8ff,#7788ff);color:#071021}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pad button{font-size:22px}.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#000a}.overlay[hidden]{display:none}.modal{width:min(320px,90%);padding:20px;border:1px solid #58e7ff;border-radius:14px;background:#101342;text-align:center}.modal input{width:100%;box-sizing:border-box;padding:10px;background:#060821;border:1px solid #7989d8;color:#fff}.rank{padding:0;list-style:none;font:12px Menlo,monospace}.rank li{display:grid;grid-template-columns:22px 1fr 66px 58px;padding:5px;border-top:1px solid #7892d822}.notice{position:absolute;top:45%;width:100%;text-align:center;color:#58e7ff;font-weight:800;text-shadow:0 0 14px #58e7ff;pointer-events:none}@media(max-width:780px){.layout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr}}@media(max-width:465px){.side{grid-template-columns:1fr}}
+</style>
+<body>
+<main class="page">
+  <h1>霓虹防线 · 飞机大战</h1>
+  <section class="layout">
+    <div class="card"><div class="arena">
+      <canvas id="game" width="480" height="720"></canvas>
+      <div class="notice" id="notice"></div>
+      <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+    </div></div>
+    <aside class="side">
+      <section class="card">
+        <div class="stats"><div class="stat">本局得分<strong id="score">000000</strong></div><div class="stat">最高分<strong class="best" id="best">000000</strong></div></div>
+        <div class="row">生命 <b class="lives" id="lives">♥♥♥</b><b class="state-ready" id="state">等待起飞</b></div>
+        <div class="row">战斗用时 <b id="timer">00:00.0</b></div>
+        <div class="buff buff-shield">护盾 <b id="shield">未激活</b></div>
+        <div class="buff buff-spread">散射弹 <b id="spread">未激活</b></div>
+        <div class="buff buff-double">双倍火力 <b id="double">未激活</b></div>
+      </section>
+      <section class="card"><div class="btns"><button class="btn main" id="pause">暂停</button><button class="btn" id="restart">重新开始</button></div></section>
+      <section class="card">移动与射击<div class="pad"><button data-k="up">↑</button><button data-k="left">←</button><button data-k="down">↓</button><button data-k="right">→</button></div></section>
+      <section class="card"><button class="btn" id="rankBtn">查看排行榜</button><ol class="rank" id="rank"></ol></section>
+    </aside>
+  </section>
+</main>
+<script src="game-rules.js"></script>
+<script src="game-storage.js"></script>
+<script src="run-session.js"></script>
+<script>
+  const $=q=>document.querySelector(q),C=$('#game'),X=C.getContext('2d'),keys={};
+  const ims={};
+  for(const[k,f]of Object.entries({player:'player-ship.png',normal:'enemy-normal.png',fast:'enemy-fast.png',elite:'enemy-elite.png',boss:'boss-ship.png',shield:'power-shield.png',spread:'power-spread.png',double:'power-double-fire.png',star:'starfield.png'})){const i=new Image();i.src='assets/'+f;ims[k]=i}
+  let session=RunSession.create({rules:GameRules,storage:GameStorage.adapter(localStorage)}),last=0;
+  const pad=n=>String(n).padStart(6,'0'),tm=n=>{let s=Math.floor(n/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')+'.'+Math.floor(n/100)%10};
+  function ranks(){$('#rank').innerHTML=session.board.map((r,i)=>`<li>${i+1}<span>${r.id}</span><b>${pad(r.score)}</b><span>${tm(r.time)}</span></li>`).join('')||'<li>尚无记录</li>'}
+  function ui(){const s=session.game,v=session.view,stateName=s.status==='running'?'running':s.status==='paused'?'paused':'ready';$('#score').textContent=pad(s.score);$('#best').textContent=pad(session.best);$('#lives').textContent='♥'.repeat(s.player.lives)+'♡'.repeat(3-s.player.lives);$('#timer').textContent=tm(s.elapsedMs);$('#state').textContent=stateName==='running'?'火力全开':stateName==='paused'?'已暂停':'等待起飞';$('#state').className='state-'+stateName;for(const[k,id]of[['shieldMs','shield'],['spreadMs','spread'],['doubleMs','double']]){const item=$( '#'+id);item.textContent=s[k]?(s[k]/1000).toFixed(1)+'s':'未激活';item.parentElement.className='buff buff-'+id}$('#notice').textContent=v.notice||'';ranks()}
+  function sp(i,x,y,w,h,c){if(i&&i.complete&&i.naturalWidth){X.save();X.globalCompositeOperation='screen';X.drawImage(i,x,y,w,h);X.restore()}else{X.fillStyle=c;X.fillRect(x,y,w,h)}}
+  function draw(){const s=session.game;X.fillStyle='#05061a';X.fillRect(0,0,480,720);if(ims.star.complete){X.globalAlpha=.5;X.drawImage(ims.star,0,0,480,720);X.globalAlpha=1}for(const b of s.bullets)sp(null,b.x,b.y,b.w,b.h,'#5ef');for(const b of s.enemyBullets)sp(null,b.x,b.y,b.w,b.h,'#f5c');for(const e of s.enemies)sp(ims[e.kind],e.x,e.y,e.w,e.h,'#d5f');for(const p of s.powerups)sp(ims[p.kind],p.x,p.y,p.w,p.h,'#fd6');if(s.boss){sp(ims.boss,s.boss.x,s.boss.y,s.boss.w,s.boss.h,'#f5c');X.fillStyle='#261338';X.fillRect(118,18,244,8);X.fillStyle='#f35bd8';X.fillRect(120,20,240*s.boss.hp/s.boss.maxHp,4)}if(s.shieldAvailable){X.strokeStyle='#58e7ff';X.lineWidth=2;X.shadowColor='#58e7ff';X.shadowBlur=12;X.beginPath();X.arc(s.player.x+30,s.player.y+28,40,0,Math.PI*2);X.stroke();X.shadowBlur=0}if(!s.player.invincibleMs||Math.floor(s.player.invincibleMs/80)%2===0)sp(ims.player,s.player.x,s.player.y,60,54,'#5ef')}
+  function modal(mode){const m=$('#modal'),o=$('#overlay');o.hidden=false;if(mode==='ready'){m.innerHTML='<h2>准备起飞？</h2><button class="btn main" id="go">启动战机</button>';$('#go').onclick=()=>{session=RunSession.start(session);o.hidden=true;ui()};return}if(mode==='rank'){m.innerHTML='<h2>排行榜</h2>'+$('#rank').outerHTML+'<button class="btn" id="close">关闭</button>';$('#close').onclick=()=>o.hidden=true;return}const v=session.view;m.innerHTML=`<h2>${v.endReason==='victory'?'通关成功':'任务结束'}</h2><p>得分 ${pad(session.game.score)} · 用时 ${tm(session.game.elapsedMs)}</p>${v.canRegister?'<input id="pid" placeholder="输入 Player ID"><button class="btn main" id="save">登记成绩</button>':''}<button class="btn" id="again">重新开始</button>`;$('#again').onclick=()=>{session=RunSession.restart(session);o.hidden=true;ui()};const save=$('#save');if(save)save.onclick=()=>{session=RunSession.register(session,$('#pid').value);o.hidden=true;ui()}}
+  function loop(n){requestAnimationFrame(loop);const dt=Math.min(34,n-last||16);last=n;if(session.game.status==='running'){session=RunSession.advance(session,{dt,input:keys,random:Math.random});if(session.view.overlay==='ended')modal('ended');ui()}draw()}
+  const keyMap={ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down'};
+  document.addEventListener('keydown',e=>{if(keyMap[e.key]){keys[keyMap[e.key]]=true;e.preventDefault()}if(e.code==='Space'){e.preventDefault();session=RunSession.togglePause(session);ui()}});
+  document.addEventListener('keyup',e=>{if(keyMap[e.key])keys[keyMap[e.key]]=false});
+  document.querySelectorAll('[data-k]').forEach(b=>{const off=()=>keys[b.dataset.k]=false;b.onpointerdown=e=>{e.preventDefault();keys[b.dataset.k]=true};b.onpointerup=b.onpointerleave=b.onpointercancel=off});
+  $('#pause').onclick=()=>{session=RunSession.togglePause(session);ui()};$('#restart').onclick=()=>{session=RunSession.restart(session);ui()};$('#rankBtn').onclick=()=>modal('rank');
+  ui();modal('ready');requestAnimationFrame(loop);
+</script>
+</body>
+</html>
