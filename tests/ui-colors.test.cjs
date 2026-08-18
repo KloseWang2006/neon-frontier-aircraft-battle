@@ -18,3 +18,13 @@ test('loads the healing sprite and draws its successful-pickup feedback',()=>{
   assert.match(page,/s\.healFlashMs>0/);
   assert.match(page,/生命 \+1/);
 });
+
+test('exposes shockwave status, Q activation, and its canvas effect',()=>{
+  for(const selector of ['.skill-meter','.skill-meter-fill','.shockwave-ready'])assert.match(page,new RegExp(selector.replace('.', '\\.')+'[^}]*'));
+  assert.match(page,/id="shockwave"/);
+  assert.match(page,/skillCharge/);
+  assert.match(page,/shockwaveCooldownMs/);
+  assert.match(page,/e\.key==='q'\|\|e\.key==='Q'/);
+  assert.match(page,/function drawShockwave\(s\)/);
+  assert.match(page,/s\.shockwaveFlashMs<=0/);
+});
