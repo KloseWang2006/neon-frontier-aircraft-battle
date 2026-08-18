@@ -11,3 +11,10 @@ test('keeps semantic neon colors for HUD state and powerups',()=>{
   assert.match(page,/className='state-'\+stateName/);
   assert.match(page,/className='buff buff-'\+id/);
 });
+
+test('loads the healing sprite and draws its successful-pickup feedback',()=>{
+  assert.match(page,/heal:'power-heal\.png'/);
+  assert.match(page,/p\.kind==='heal'\?'#71ff96':'#fd6'/);
+  assert.match(page,/s\.healFlashMs>0/);
+  assert.match(page,/生命 \+1/);
+});
