@@ -19,12 +19,31 @@ test('loads the healing sprite and draws its successful-pickup feedback',()=>{
   assert.match(page,/生命 \+1/);
 });
 
-test('exposes shockwave status, Q activation, and its canvas effect',()=>{
+test('exposes fighter selection, dynamic skill status, Q activation, and both skill effects',()=>{
   for(const selector of ['.skill-meter','.skill-meter-fill','.shockwave-ready'])assert.match(page,new RegExp(selector.replace('.', '\\.')+'[^}]*'));
-  assert.match(page,/id="shockwave"/);
+  assert.match(page,/data-fighter="azure"/);
+  assert.match(page,/data-fighter="silver"/);
+  assert.match(page,/silver:'player-silver-stealth\.png'/);
+  assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-silver-stealth.png')),true);
+  assert.match(page,/id="skillButton"/);
   assert.match(page,/skillCharge/);
-  assert.match(page,/shockwaveCooldownMs/);
+  assert.match(page,/skillCooldownMs/);
   assert.match(page,/e\.key==='q'\|\|e\.key==='Q'/);
   assert.match(page,/function drawShockwave\(s\)/);
   assert.match(page,/s\.shockwaveFlashMs<=0/);
+  assert.match(page,/function drawStealth\(s\)/);
+  assert.match(page,/s\.stealthMs<=0/);
+  assert.match(page,/fighter-choice\[data-fighter="silver"\] img\{transform:rotate\(180deg\)/);
+  assert.match(page,/X\.rotate\(Math\.PI\)/);
+  assert.match(page,/b\.color\|\|/);
+  assert.match(page,/RunSession\.selectFighter/);
+});
+
+test('uses a desktop action column for fighter selection, run controls, and movement',()=>{
+  assert.match(page,/class="side status-side"/);
+  assert.match(page,/class="side action-side"/);
+  assert.match(page,/\.layout\{grid-template-columns:420px 267px 267px\}/);
+  assert.match(page,/@media\(max-width:1050px\)\{\.layout\{grid-template-columns:420px 267px\}/);
+  assert.ok(page.indexOf('class="side status-side"')<page.indexOf('class="side action-side"'));
+  assert.ok(page.indexOf('class="side action-side"')<page.indexOf('移动与射击'));
 });

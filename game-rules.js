@@ -1,13 +1,18 @@
 (function(root,factory){const rules=factory();if(typeof module==='object'&&module.exports)module.exports=rules;root.GameRules=rules})(globalThis,()=>{
-  const W=480,H=720,TOP=288,MAX_LIVES=3,SHOCKWAVE_MAX=100,SHOCKWAVE_RANGE=180,SHOCKWAVE_COOLDOWN=18000,SHOCKWAVE_FLASH=520;
+  const W=480,H=720,TOP=288,MAX_LIVES=3,SKILL_MAX=100,SKILL_COOLDOWN=18000,SHOCKWAVE_RANGE=300,SHOCKWAVE_FLASH=520,STEALTH_DURATION=3000;
+  const FIGHTERS=Object.freeze({
+    azure:Object.freeze({id:'azure',name:'蔚蓝风暴',skillName:'冲击波',ability:'shockwave',speed:320,bulletDamage:1,bulletColor:'#5ef',sprite:'player'}),
+    silver:Object.freeze({id:'silver',name:'银翼杀手',skillName:'隐匿',ability:'stealth',speed:320,bulletDamage:1,bulletColor:'#dcecff',sprite:'silver'})
+  });
   const PLAYER={x:210,y:630,w:60,h:54,lives:MAX_LIVES,invincibleMs:0};
   const THRESHOLDS=[10000,30000,50000,100000],BOSS_HP=[105,170,245,330];
   const hit=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
   const clone=s=>({...s,player:{...s.player},bullets:s.bullets.map(v=>({...v})),enemyBullets:s.enemyBullets.map(v=>({...v})),enemies:s.enemies.map(v=>({...v})),powerups:s.powerups.map(v=>({...v})),boss:s.boss&&{...s.boss},triggered:[...s.triggered],bossesDefeated:[...s.bossesDefeated]});
 
   function create(o={}){
-    const d={player:PLAYER,bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,score:0,status:'running',elapsedMs:0,fireClock:0,spawnClock:0,enemyFireClock:0,nextId:1,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,shockwaveCharge:0,shockwaveCooldownMs:0,shockwaveFlashMs:0,shieldAvailable:false,triggered:[],bossesDefeated:[],rankEligible:false};
-    return {...d,...o,player:{...PLAYER,...(o.player||{})},bullets:(o.bullets||[]).map(v=>({...v})),enemyBullets:(o.enemyBullets||[]).map(v=>({...v})),enemies:(o.enemies||[]).map(v=>({...v})),powerups:(o.powerups||[]).map(v=>({...v})),triggered:[...(o.triggered||[])],bossesDefeated:[...(o.bossesDefeated||[])]};
+    const fighterId=FIGHTERS[o.fighterId] ? o.fighterId : 'azure';
+    const d={fighterId,player:PLAYER,bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,score:0,status:'running',elapsedMs:0,fireClock:0,spawnClock:0,enemyFireClock:0,nextId:1,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,shieldAvailable:false,triggered:[],bossesDefeated:[],rankEligible:false};
+    return {...d,...o,fighterId,player:{...PLAYER,...(o.player||{})},bullets:(o.bullets||[]).map(v=>({...v})),enemyBullets:(o.enemyBullets||[]).map(v=>({...v})),enemies:(o.enemies||[]).map(v=>({...v})),powerups:(o.powerups||[]).map(v=>({...v})),triggered:[...(o.triggered||[])],bossesDefeated:[...(o.bossesDefeated||[])]};
   }
 
   function enemy(kind,id,x){
@@ -22,7 +27,8 @@
 
   function powerupKind(r){return r<.025?'shield':r<.055?'spread':r<.09?'double':'heal'}
 
-  function chargeShockwave(s,kind){s.shockwaveCharge=Math.min(SHOCKWAVE_MAX,s.shockwaveCharge+(kind==='elite'?5:kind==='fast'?3:2))}
+  function fighter(s){return FIGHTERS[s.fighterId]||FIGHTERS.azure}
+  function chargeSkill(s,kind){s.skillCharge=Math.min(SKILL_MAX,s.skillCharge+(kind==='elite'?5:kind==='fast'?3:2))}
   function inShockwaveRange(s,target){const px=s.player.x+s.player.w/2,py=s.player.y+s.player.h/2,tx=target.x+target.w/2,ty=target.y+target.h/2;return Math.hypot(tx-px,ty-py)<=SHOCKWAVE_RANGE}
 
   function playerShot(s){
@@ -30,14 +36,14 @@
     s.fireClock+=s._dt;
     while(s.fireClock>=rate){
       s.fireClock-=rate;
-      const b={x:s.player.x+26,y:s.player.y-9,w:8,h:17,vx:0,vy:-560,damage:1};
+      const b={x:s.player.x+26,y:s.player.y-9,w:8,h:17,vx:0,vy:-560,damage:fighter(s).bulletDamage,color:fighter(s).bulletColor};
       s.bullets.push(b);
       if(s.spreadMs>0)s.bullets.push({...b,vx:-155,vy:-530},{...b,vx:155,vy:-530});
     }
   }
 
   function hurt(s){
-    if(s.player.invincibleMs>0)return;
+    if(s.player.invincibleMs>0||s.stealthMs>0)return;
     if(s.shieldAvailable){s.shieldAvailable=false;s.shieldMs=0;return}
     s.player.lives--;
     s.player.invincibleMs=750;
@@ -53,11 +59,12 @@
     s.spreadMs=Math.max(0,s.spreadMs-ms);
     s.doubleMs=Math.max(0,s.doubleMs-ms);
     s.healFlashMs=Math.max(0,s.healFlashMs-ms);
-    s.shockwaveCooldownMs=Math.max(0,s.shockwaveCooldownMs-ms);
+    s.skillCooldownMs=Math.max(0,s.skillCooldownMs-ms);
     s.shockwaveFlashMs=Math.max(0,s.shockwaveFlashMs-ms);
+    s.stealthMs=Math.max(0,s.stealthMs-ms);
     if(!s.shieldMs)s.shieldAvailable=false;
     s.player.invincibleMs=Math.max(0,s.player.invincibleMs-ms);
-    const dx=((input.left?-1:0)+(input.right?1:0))*320*ms/1000,dy=((input.up?-1:0)+(input.down?1:0))*320*ms/1000;
+    const dx=((input.left?-1:0)+(input.right?1:0))*fighter(s).speed*ms/1000,dy=((input.up?-1:0)+(input.down?1:0))*fighter(s).speed*ms/1000;
     s.player.x=Math.max(0,Math.min(W-s.player.w,s.player.x+dx));
     s.player.y=Math.max(TOP,Math.min(H-s.player.h,s.player.y+dy));
     playerShot(s);
@@ -97,7 +104,7 @@
       const b=s.bullets[bi];
       if(s.boss&&hit(b,s.boss)){
         used.add(bi);
-        if(--s.boss.hp<=0){
+        if((s.boss.hp-=(b.damage??1))<=0){
           const boss=s.boss;
           s.score+=2000;s.bossesDefeated.push(boss.trigger);s.boss=null;
           events.push({type:'boss-defeated',stage:boss.stage});
@@ -110,8 +117,8 @@
         const e=s.enemies[ei];
         if(dead.has(ei)||!hit(b,e))continue;
         used.add(bi);
-        if(--e.hp<=0){
-          dead.add(ei);s.score+=e.score;chargeShockwave(s,e.kind);
+        if((e.hp-=(b.damage??1))<=0){
+          dead.add(ei);s.score+=e.score;chargeSkill(s,e.kind);
           const r=random();
           if(r<.1)s.powerups.push({kind:powerupKind(r),x:e.x,y:e.y,w:28,h:28,vy:100});
         }
@@ -120,11 +127,17 @@
     }
     s.bullets=s.bullets.filter((_,i)=>!used.has(i));
     s.enemies=s.enemies.filter((e,i)=>!dead.has(i)&&e.y<H+65);
-    if(input.shockwave&&s.shockwaveCharge>=SHOCKWAVE_MAX&&s.shockwaveCooldownMs===0){
-      s.shockwaveCharge=0;s.shockwaveCooldownMs=SHOCKWAVE_COOLDOWN;s.shockwaveFlashMs=SHOCKWAVE_FLASH;
-      s.enemies=s.enemies.filter(e=>{if(!inShockwaveRange(s,e))return true;s.score+=e.score;return false});
-      s.enemyBullets=s.enemyBullets.filter(b=>!inShockwaveRange(s,b));
-      events.push({type:'shockwave-released'});
+    if(input.skill&&s.skillCharge>=SKILL_MAX&&s.skillCooldownMs===0){
+      s.skillCharge=0;s.skillCooldownMs=SKILL_COOLDOWN;
+      if(fighter(s).ability==='shockwave'){
+        s.shockwaveFlashMs=SHOCKWAVE_FLASH;
+        s.enemies=s.enemies.filter(e=>{if(!inShockwaveRange(s,e))return true;s.score+=e.score;return false});
+        s.enemyBullets=s.enemyBullets.filter(b=>!inShockwaveRange(s,b));
+        events.push({type:'shockwave-released'});
+      }else{
+        s.stealthMs=STEALTH_DURATION;
+        events.push({type:'stealth-activated'});
+      }
     }
     for(const b of s.enemyBullets)if(hit(b,s.player)){hurt(s);b.consumed=true}
     s.enemyBullets=s.enemyBullets.filter(b=>!b.consumed);
@@ -144,5 +157,5 @@
     return{state:s,events};
   }
 
-  return{create,step,constants:{W,H,TOP,MAX_LIVES,SHOCKWAVE_MAX,SHOCKWAVE_RANGE,SHOCKWAVE_COOLDOWN}};
+  return{create,step,fighters:FIGHTERS,constants:{W,H,TOP,MAX_LIVES,SKILL_MAX,SKILL_COOLDOWN,SHOCKWAVE_RANGE,SHOCKWAVE_FLASH,STEALTH_DURATION}};
 });
