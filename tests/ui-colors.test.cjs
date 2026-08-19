@@ -23,8 +23,11 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   for(const selector of ['.skill-meter','.skill-meter-fill','.shockwave-ready'])assert.match(page,new RegExp(selector.replace('.', '\\.')+'[^}]*'));
   assert.match(page,/data-fighter="azure"/);
   assert.match(page,/data-fighter="silver"/);
+  assert.match(page,/data-fighter="green"/);
   assert.match(page,/silver:'player-silver-stealth\.png'/);
+  assert.match(page,/green:'player-green-ninja\.png'/);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-silver-stealth.png')),true);
+  assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-green-ninja.png')),true);
   assert.match(page,/id="skillButton"/);
   assert.match(page,/skillCharge/);
   assert.match(page,/skillCooldownMs/);
@@ -37,6 +40,8 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(page,/X\.rotate\(Math\.PI\)/);
   assert.match(page,/b\.color\|\|/);
   assert.match(page,/RunSession\.selectFighter/);
+  assert.match(page,/s\.wingmenMs>0/);
+  assert.match(page,/function drawWingmen\(s,f\)/);
 });
 
 test('uses a desktop action column for fighter selection, run controls, and movement',()=>{
@@ -46,4 +51,12 @@ test('uses a desktop action column for fighter selection, run controls, and move
   assert.match(page,/@media\(max-width:1050px\)\{\.layout\{grid-template-columns:420px 267px\}/);
   assert.ok(page.indexOf('class="side status-side"')<page.indexOf('class="side action-side"'));
   assert.ok(page.indexOf('class="side action-side"')<page.indexOf('移动与射击'));
+});
+
+test('stacks the score-registration form and restart action in the end modal',()=>{
+  assert.match(page,/\.register-form\{display:grid/);
+  assert.match(page,/\.modal-secondary\{width:100%/);
+  assert.match(page,/class="register-form"/);
+  assert.match(page,/Player ID/);
+  assert.ok(page.indexOf('id="save"')<page.indexOf('id="again"'));
 });

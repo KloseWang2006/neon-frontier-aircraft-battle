@@ -1,8 +1,9 @@
 (function(root,factory){const rules=factory();if(typeof module==='object'&&module.exports)module.exports=rules;root.GameRules=rules})(globalThis,()=>{
-  const W=480,H=720,TOP=288,MAX_LIVES=3,SKILL_MAX=100,SKILL_COOLDOWN=18000,SHOCKWAVE_RANGE=300,SHOCKWAVE_FLASH=520,STEALTH_DURATION=3000;
+  const W=480,H=720,TOP=288,MAX_LIVES=3,SKILL_MAX=100,SKILL_COOLDOWN=18000,SHOCKWAVE_RANGE=300,SHOCKWAVE_FLASH=520,STEALTH_DURATION=3000,WINGMEN_DURATION=8000;
   const FIGHTERS=Object.freeze({
     azure:Object.freeze({id:'azure',name:'蔚蓝风暴',skillName:'冲击波',ability:'shockwave',speed:320,bulletDamage:1,bulletColor:'#5ef',sprite:'player'}),
-    silver:Object.freeze({id:'silver',name:'银翼杀手',skillName:'隐匿',ability:'stealth',speed:320,bulletDamage:1,bulletColor:'#dcecff',sprite:'silver'})
+    silver:Object.freeze({id:'silver',name:'银翼杀手',skillName:'隐匿',ability:'stealth',speed:320,bulletDamage:1,bulletColor:'#dcecff',sprite:'silver'}),
+    green:Object.freeze({id:'green',name:'青岚影忍',skillName:'影分身援护',ability:'wingmen',speed:320,bulletDamage:1,bulletColor:'#65ff9a',sprite:'green'})
   });
   const PLAYER={x:210,y:630,w:60,h:54,lives:MAX_LIVES,invincibleMs:0};
   const THRESHOLDS=[10000,30000,50000,100000],BOSS_HP=[105,170,245,330];
@@ -11,7 +12,7 @@
 
   function create(o={}){
     const fighterId=FIGHTERS[o.fighterId] ? o.fighterId : 'azure';
-    const d={fighterId,player:PLAYER,bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,score:0,status:'running',elapsedMs:0,fireClock:0,spawnClock:0,enemyFireClock:0,nextId:1,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,shieldAvailable:false,triggered:[],bossesDefeated:[],rankEligible:false};
+    const d={fighterId,player:PLAYER,bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,score:0,status:'running',elapsedMs:0,fireClock:0,spawnClock:0,enemyFireClock:0,nextId:1,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,wingmenMs:0,shieldAvailable:false,triggered:[],bossesDefeated:[],rankEligible:false};
     return {...d,...o,fighterId,player:{...PLAYER,...(o.player||{})},bullets:(o.bullets||[]).map(v=>({...v})),enemyBullets:(o.enemyBullets||[]).map(v=>({...v})),enemies:(o.enemies||[]).map(v=>({...v})),powerups:(o.powerups||[]).map(v=>({...v})),triggered:[...(o.triggered||[])],bossesDefeated:[...(o.bossesDefeated||[])]};
   }
 
@@ -30,15 +31,20 @@
   function fighter(s){return FIGHTERS[s.fighterId]||FIGHTERS.azure}
   function chargeSkill(s,kind){s.skillCharge=Math.min(SKILL_MAX,s.skillCharge+(kind==='elite'?5:kind==='fast'?3:2))}
   function inShockwaveRange(s,target){const px=s.player.x+s.player.w/2,py=s.player.y+s.player.h/2,tx=target.x+target.w/2,ty=target.y+target.h/2;return Math.hypot(tx-px,ty-py)<=SHOCKWAVE_RANGE}
+  function wingmanPositions(s){return[{x:s.player.x-16,y:s.player.y+22},{x:s.player.x+46,y:s.player.y+22}]}
+  function addShot(s,{x,y,w=8,h=17,damage=fighter(s).bulletDamage,support=false}){
+    const b={x,y,w,h,vx:0,vy:-560,damage,color:fighter(s).bulletColor,support};
+    s.bullets.push(b);
+    if(s.spreadMs>0)s.bullets.push({...b,vx:-155,vy:-530},{...b,vx:155,vy:-530});
+  }
 
   function playerShot(s){
     const rate=s.doubleMs>0?90:180;
     s.fireClock+=s._dt;
     while(s.fireClock>=rate){
       s.fireClock-=rate;
-      const b={x:s.player.x+26,y:s.player.y-9,w:8,h:17,vx:0,vy:-560,damage:fighter(s).bulletDamage,color:fighter(s).bulletColor};
-      s.bullets.push(b);
-      if(s.spreadMs>0)s.bullets.push({...b,vx:-155,vy:-530},{...b,vx:155,vy:-530});
+      addShot(s,{x:s.player.x+26,y:s.player.y-9});
+      if(fighter(s).ability==='wingmen'&&s.wingmenMs>0)for(const wingman of wingmanPositions(s))addShot(s,{x:wingman.x+13,y:wingman.y-5,w:4,h:8.5,damage:.5,support:true});
     }
   }
 
@@ -62,6 +68,7 @@
     s.skillCooldownMs=Math.max(0,s.skillCooldownMs-ms);
     s.shockwaveFlashMs=Math.max(0,s.shockwaveFlashMs-ms);
     s.stealthMs=Math.max(0,s.stealthMs-ms);
+    s.wingmenMs=Math.max(0,s.wingmenMs-ms);
     if(!s.shieldMs)s.shieldAvailable=false;
     s.player.invincibleMs=Math.max(0,s.player.invincibleMs-ms);
     const dx=((input.left?-1:0)+(input.right?1:0))*fighter(s).speed*ms/1000,dy=((input.up?-1:0)+(input.down?1:0))*fighter(s).speed*ms/1000;
@@ -134,9 +141,12 @@
         s.enemies=s.enemies.filter(e=>{if(!inShockwaveRange(s,e))return true;s.score+=e.score;return false});
         s.enemyBullets=s.enemyBullets.filter(b=>!inShockwaveRange(s,b));
         events.push({type:'shockwave-released'});
-      }else{
+      }else if(fighter(s).ability==='stealth'){
         s.stealthMs=STEALTH_DURATION;
         events.push({type:'stealth-activated'});
+      }else{
+        s.wingmenMs=WINGMEN_DURATION;
+        events.push({type:'wingmen-activated'});
       }
     }
     for(const b of s.enemyBullets)if(hit(b,s.player)){hurt(s);b.consumed=true}
@@ -157,5 +167,5 @@
     return{state:s,events};
   }
 
-  return{create,step,fighters:FIGHTERS,constants:{W,H,TOP,MAX_LIVES,SKILL_MAX,SKILL_COOLDOWN,SHOCKWAVE_RANGE,SHOCKWAVE_FLASH,STEALTH_DURATION}};
+  return{create,step,fighters:FIGHTERS,constants:{W,H,TOP,MAX_LIVES,SKILL_MAX,SKILL_COOLDOWN,SHOCKWAVE_RANGE,SHOCKWAVE_FLASH,STEALTH_DURATION,WINGMEN_DURATION}};
 });
