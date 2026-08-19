@@ -10,7 +10,7 @@
 
 游戏完全使用本地 HTML、CSS、JavaScript 和图片资源，不依赖服务器或第三方库。
 
-游戏规则位于 `game-rules.js`；`run-session.js` 管理准备、暂停、结束和登记流程；`game-storage.js` 统一管理浏览器本地成绩。页面只负责 Canvas 绘制、输入和根据会话快照更新界面。
+`fighter-catalog.js` 集中战机资料、技能规则与视觉描述；`game-rules.js` 负责通用战斗状态推进；`run-session.js` 管理准备、暂停、结束和登记流程；`game-storage.js` 统一管理浏览器本地成绩。页面只负责 Canvas 绘制、输入和根据会话快照更新界面。
 
 ## 操作说明
 
@@ -65,12 +65,14 @@ Boss 会在战场上方横移，并交替使用扇形与三连弹幕。击败 10
 ```text
 飞机大战/
 ├── index.html            # 游戏页面、Canvas 呈现、输入与会话快照渲染
+├── fighter-catalog.js     # 战机与技能目录 module
 ├── game-rules.js          # 纯游戏规则 module：状态推进与本帧事件
 ├── run-session.js         # 运行生命周期 module：弹窗、资格与登记流程
 ├── game-storage.js        # 本地成绩存储 adapter：最高分与排行榜
 ├── CONTEXT.md             # 项目术语
 ├── README.md             # 本说明
 ├── tests/
+│   ├── fighter-catalog.test.cjs # 战机目录测试
 │   ├── game-rules.test.cjs  # 可重复运行的规则测试
 │   ├── run-session.test.cjs # 生命周期测试
 │   └── game-storage.test.cjs # 本地存储测试
@@ -99,7 +101,7 @@ Boss 会在战场上方横移，并交替使用扇形与三连弹幕。击败 10
 在本文件夹运行：
 
 ```bash
-node --test tests/game-rules.test.cjs tests/run-session.test.cjs tests/game-storage.test.cjs
+node --test tests/fighter-catalog.test.cjs tests/game-rules.test.cjs tests/run-session.test.cjs tests/game-storage.test.cjs tests/ui-colors.test.cjs
 ```
 
-测试使用固定输入、时间差与随机源，覆盖移动、射击、敌机、强化包、Boss、上榜资格、结束事件、暂停计时、会话流程与成绩排序。
+测试使用固定输入、时间差与随机源，覆盖战机目录、移动、射击、敌机、强化包、Boss、上榜资格、结束事件、暂停计时、会话流程与成绩排序。

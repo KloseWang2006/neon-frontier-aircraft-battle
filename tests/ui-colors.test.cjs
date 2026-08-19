@@ -21,26 +21,27 @@ test('loads the healing sprite and draws its successful-pickup feedback',()=>{
 
 test('exposes fighter selection, dynamic skill status, Q activation, and both skill effects',()=>{
   for(const selector of ['.skill-meter','.skill-meter-fill','.shockwave-ready'])assert.match(page,new RegExp(selector.replace('.', '\\.')+'[^}]*'));
-  assert.match(page,/data-fighter="azure"/);
-  assert.match(page,/data-fighter="silver"/);
-  assert.match(page,/data-fighter="green"/);
-  assert.match(page,/silver:'player-silver-stealth\.png'/);
-  assert.match(page,/green:'player-green-ninja\.png'/);
+  assert.match(page,/<script src="fighter-catalog\.js"><\/script>/);
+  assert.match(page,/id="fighterOptions"/);
+  assert.match(page,/function renderFighterOptions\(\)/);
+  assert.match(page,/FighterCatalog\.list\(\)/);
+  assert.match(page,/FighterCatalog\.get\(s\.fighterId\)/);
+  assert.doesNotMatch(page,/data-fighter="azure"/);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-silver-stealth.png')),true);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-green-ninja.png')),true);
   assert.match(page,/id="skillButton"/);
   assert.match(page,/skillCharge/);
   assert.match(page,/skillCooldownMs/);
   assert.match(page,/e\.key==='q'\|\|e\.key==='Q'/);
-  assert.match(page,/function drawShockwave\(s\)/);
+  assert.match(page,/function drawShockwave\(s,f\)/);
   assert.match(page,/s\.shockwaveFlashMs<=0/);
-  assert.match(page,/function drawStealth\(s\)/);
+  assert.match(page,/function drawStealth\(s,f\)/);
   assert.match(page,/s\.stealthMs<=0/);
-  assert.match(page,/fighter-choice\[data-fighter="silver"\] img\{transform:rotate\(180deg\)/);
-  assert.match(page,/X\.rotate\(Math\.PI\)/);
+  assert.match(page,/--fighter-rotation/);
+  assert.match(page,/X\.rotate\(rotation\*Math\.PI\/180\)/);
   assert.match(page,/b\.color\|\|/);
   assert.match(page,/RunSession\.selectFighter/);
-  assert.match(page,/s\.wingmenMs>0/);
+  assert.match(page,/f\.visual\.effect\.kind!=='wingmen'/);
   assert.match(page,/function drawWingmen\(s,f\)/);
 });
 
