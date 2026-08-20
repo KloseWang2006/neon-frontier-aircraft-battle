@@ -3,46 +3,50 @@ const fs=require('node:fs');
 const test=require('node:test');
 
 const page=fs.readFileSync(require('node:path').join(__dirname,'..','index.html'),'utf8');
+const presentation=fs.readFileSync(require('node:path').join(__dirname,'..','page-presentation.js'),'utf8');
 
 test('keeps semantic neon colors for HUD state and powerups',()=>{
   for(const selector of ['.lives','.state-running','.state-paused','.buff-shield','.buff-spread','.buff-double']){
     assert.match(page,new RegExp(selector.replace('.', '\\.')+'[^}]*color:'));
   }
-  assert.match(page,/className='state-'\+stateName/);
-  assert.match(page,/className='buff buff-'\+id/);
+  assert.match(presentation,/className='state-'\+stateName/);
+  assert.match(presentation,/className='buff buff-'\+id/);
 });
 
 test('loads the healing sprite and draws its successful-pickup feedback',()=>{
-  assert.match(page,/heal:'power-heal\.png'/);
-  assert.match(page,/p\.kind==='heal'\?'#71ff96':'#fd6'/);
-  assert.match(page,/s\.healFlashMs>0/);
-  assert.match(page,/生命 \+1/);
+  assert.match(presentation,/heal:'power-heal\.png'/);
+  assert.match(presentation,/powerup\.kind==='heal'\?'#71ff96':'#fd6'/);
+  assert.match(presentation,/state\.healFlashMs>0/);
+  assert.match(presentation,/生命 \+1/);
 });
 
 test('exposes fighter selection, dynamic skill status, Q activation, and both skill effects',()=>{
   for(const selector of ['.skill-meter','.skill-meter-fill','.shockwave-ready'])assert.match(page,new RegExp(selector.replace('.', '\\.')+'[^}]*'));
   assert.match(page,/<script src="fighter-catalog\.js"><\/script>/);
+  assert.match(page,/<script src="page-presentation\.js"><\/script>/);
   assert.match(page,/id="fighterOptions"/);
-  assert.match(page,/function renderFighterOptions\(\)/);
-  assert.match(page,/FighterCatalog\.list\(\)/);
-  assert.match(page,/FighterCatalog\.get\(s\.fighterId\)/);
+  assert.match(page,/PagePresentation\.create\(/);
+  assert.match(presentation,/function renderFighterOptions\(\)/);
+  assert.match(presentation,/catalog\.list\(\)/);
+  assert.match(presentation,/catalog\.get\(state\.fighterId\)/);
   assert.doesNotMatch(page,/data-fighter="azure"/);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-silver-stealth.png')),true);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-green-ninja.png')),true);
   assert.match(page,/id="skillButton"/);
-  assert.match(page,/skillCharge/);
-  assert.match(page,/skillCooldownMs/);
-  assert.match(page,/e\.key==='q'\|\|e\.key==='Q'/);
-  assert.match(page,/function drawShockwave\(s,f\)/);
-  assert.match(page,/s\.shockwaveFlashMs<=0/);
-  assert.match(page,/function drawStealth\(s,f\)/);
-  assert.match(page,/s\.stealthMs<=0/);
+  assert.match(presentation,/skillCharge/);
+  assert.match(presentation,/skillCooldownMs/);
+  assert.match(page,/event\.key==='q'\|\|event\.key==='Q'/);
+  assert.match(presentation,/function drawShockwave\(state,fighter\)/);
+  assert.match(presentation,/state\.shockwaveFlashMs<=0/);
+  assert.match(presentation,/function drawStealth\(state,fighter\)/);
+  assert.match(presentation,/state\.stealthMs<=0/);
   assert.match(page,/--fighter-rotation/);
-  assert.match(page,/X\.rotate\(rotation\*Math\.PI\/180\)/);
-  assert.match(page,/b\.color\|\|/);
+  assert.match(presentation,/context\.rotate\(rotation\*Math\.PI\/180\)/);
+  assert.match(presentation,/bullet\.color\|\|/);
   assert.match(page,/RunSession\.selectFighter/);
-  assert.match(page,/f\.visual\.effect\.kind!=='wingmen'/);
-  assert.match(page,/function drawWingmen\(s,f\)/);
+  assert.match(presentation,/fighter\.visual\.effect\.kind!=='wingmen'/);
+  assert.match(presentation,/function drawWingmen\(state,fighter\)/);
+  assert.doesNotMatch(page,/function draw\(/);
 });
 
 test('uses a desktop action column for fighter selection, run controls, and movement',()=>{
@@ -57,7 +61,7 @@ test('uses a desktop action column for fighter selection, run controls, and move
 test('stacks the score-registration form and restart action in the end modal',()=>{
   assert.match(page,/\.register-form\{display:grid/);
   assert.match(page,/\.modal-secondary\{width:100%/);
-  assert.match(page,/class="register-form"/);
-  assert.match(page,/Player ID/);
-  assert.ok(page.indexOf('id="save"')<page.indexOf('id="again"'));
+  assert.match(presentation,/class="register-form"/);
+  assert.match(presentation,/Player ID/);
+  assert.ok(presentation.indexOf('id="save"')<presentation.indexOf('id="again"'));
 });
