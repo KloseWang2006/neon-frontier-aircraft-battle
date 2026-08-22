@@ -1,6 +1,6 @@
 (function(root,factory){const catalog=typeof module==='object'&&module.exports?require('./fighter-catalog.js'):root.FighterCatalog;const rules=factory(catalog);if(typeof module==='object'&&module.exports)module.exports=rules;root.GameRules=rules})(globalThis,FighterCatalog=>{
   if(!FighterCatalog)throw new Error('FighterCatalog must load before GameRules');
-  const W=480,H=720,TOP=288,MAX_LIVES=3,SKILL_MAX=100,SKILL_COOLDOWN=FighterCatalog.constants.skillCooldown,SHOCKWAVE_RANGE=300,SHOCKWAVE_FLASH=FighterCatalog.constants.shockwaveFlash,STEALTH_DURATION=FighterCatalog.constants.stealthDuration,WINGMEN_DURATION=FighterCatalog.constants.wingmenDuration;
+  const W=480,H=720,TOP=288,MAX_LIVES=3,SKILL_MAX=100,SKILL_COOLDOWN=FighterCatalog.constants.skillCooldown,SHOCKWAVE_RANGE=300,SHOCKWAVE_FLASH=FighterCatalog.constants.shockwaveFlash,STEALTH_DURATION=FighterCatalog.constants.stealthDuration,WINGMEN_DURATION=FighterCatalog.constants.wingmenDuration,HOMING_DURATION=FighterCatalog.constants.homingDuration,HOMING_TURN_RATE=FighterCatalog.constants.homingTurnRate;
   const FIGHTERS=FighterCatalog.fighters;
   const PLAYER={x:210,y:630,w:60,h:54,lives:MAX_LIVES,invincibleMs:0};
   const THRESHOLDS=[10000,30000,50000,100000],BOSS_HP=[105,170,245,330];
@@ -9,7 +9,7 @@
 
   function create(o={}){
     const fighterId=FIGHTERS[o.fighterId] ? o.fighterId : 'azure';
-    const d={fighterId,player:PLAYER,bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,score:0,status:'running',elapsedMs:0,fireClock:0,spawnClock:0,enemyFireClock:0,nextId:1,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,wingmenMs:0,shieldAvailable:false,triggered:[],bossesDefeated:[],rankEligible:false};
+    const d={fighterId,player:PLAYER,bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,score:0,status:'running',elapsedMs:0,fireClock:0,spawnClock:0,enemyFireClock:0,nextId:1,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,wingmenMs:0,homingMs:0,shieldAvailable:false,triggered:[],bossesDefeated:[],rankEligible:false};
     return {...d,...o,fighterId,player:{...PLAYER,...(o.player||{})},bullets:(o.bullets||[]).map(v=>({...v})),enemyBullets:(o.enemyBullets||[]).map(v=>({...v})),enemies:(o.enemies||[]).map(v=>({...v})),powerups:(o.powerups||[]).map(v=>({...v})),triggered:[...(o.triggered||[])],bossesDefeated:[...(o.bossesDefeated||[])]};
   }
 
@@ -30,8 +30,21 @@
   function inShockwaveRange(s,target){const px=s.player.x+s.player.w/2,py=s.player.y+s.player.h/2,tx=target.x+target.w/2,ty=target.y+target.h/2;return Math.hypot(tx-px,ty-py)<=SHOCKWAVE_RANGE}
   function addShot(s,{x,y,w=8,h=17,damage=fighter(s).bulletDamage,support=false}){
     const b={x,y,w,h,vx:0,vy:-560,damage,color:fighter(s).bulletColor,support};
+    fighter(s).rules.decorateShot({state:s,shot:b});
     s.bullets.push(b);
     if(s.spreadMs>0)s.bullets.push({...b,vx:-155,vy:-530},{...b,vx:155,vy:-530});
+  }
+
+  function nearestHomingTarget(s,bullet){
+    if(s.enemies.length)return s.enemies.reduce((closest,enemy)=>{const bx=bullet.x+bullet.w/2,by=bullet.y+bullet.h/2,dx=enemy.x+enemy.w/2-bx,dy=enemy.y+enemy.h/2-by;return !closest||dx*dx+dy*dy<closest.distance?{target:enemy,distance:dx*dx+dy*dy}:closest},null).target;
+    return s.boss;
+  }
+  function steerHomingBullet(s,bullet,ms){
+    if(!bullet.homing)return bullet;
+    const target=nearestHomingTarget(s,bullet);
+    if(!target)return bullet;
+    const bx=bullet.x+bullet.w/2,by=bullet.y+bullet.h/2,tx=target.x+target.w/2,ty=target.y+target.h/2,desired=Math.atan2(ty-by,tx-bx),speed=Math.hypot(bullet.vx,bullet.vy)||560,current=Math.atan2(bullet.vy,bullet.vx),raw=((desired-current+Math.PI*3)%(Math.PI*2))-Math.PI,maxTurn=HOMING_TURN_RATE*ms/1000,angle=current+Math.max(-maxTurn,Math.min(maxTurn,raw));
+    return {...bullet,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed};
   }
 
   function playerShot(s){
@@ -69,7 +82,7 @@
     s.player.x=Math.max(0,Math.min(W-s.player.w,s.player.x+dx));
     s.player.y=Math.max(TOP,Math.min(H-s.player.h,s.player.y+dy));
     playerShot(s);
-    s.bullets=s.bullets.map(b=>({...b,x:b.x+b.vx*ms/1000,y:b.y+b.vy*ms/1000})).filter(b=>b.y>-30&&b.x>-30&&b.x<W+30);
+    s.bullets=s.bullets.map(b=>{const steered=steerHomingBullet(s,b,ms);return {...steered,x:steered.x+steered.vx*ms/1000,y:steered.y+steered.vy*ms/1000}}).filter(b=>b.y>-30&&b.x>-30&&b.x<W+30);
     s.enemyBullets=s.enemyBullets.map(b=>({...b,x:b.x+b.vx*ms/1000,y:b.y+b.vy*ms/1000})).filter(b=>b.y<H+30);
 
     if(!s.boss){
@@ -150,5 +163,5 @@
     return{state:s,events};
   }
 
-  return{create,step,fighters:FIGHTERS,constants:{W,H,TOP,MAX_LIVES,SKILL_MAX,SKILL_COOLDOWN,SHOCKWAVE_RANGE,SHOCKWAVE_FLASH,STEALTH_DURATION,WINGMEN_DURATION}};
+  return{create,step,fighters:FIGHTERS,constants:{W,H,TOP,MAX_LIVES,SKILL_MAX,SKILL_COOLDOWN,SHOCKWAVE_RANGE,SHOCKWAVE_FLASH,STEALTH_DURATION,WINGMEN_DURATION,HOMING_DURATION,HOMING_TURN_RATE}};
 });

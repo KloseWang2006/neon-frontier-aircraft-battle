@@ -32,6 +32,7 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.doesNotMatch(page,/data-fighter="azure"/);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-silver-stealth.png')),true);
   assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-green-ninja.png')),true);
+  assert.equal(fs.existsSync(require('node:path').join(__dirname,'..','assets','player-yellow-solar.png')),true);
   assert.match(page,/id="skillButton"/);
   assert.match(presentation,/skillCharge/);
   assert.match(presentation,/skillCooldownMs/);
@@ -46,6 +47,9 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(page,/RunSession\.selectFighter/);
   assert.match(presentation,/fighter\.visual\.effect\.kind!=='wingmen'/);
   assert.match(presentation,/function drawWingmen\(state,fighter\)/);
+  assert.match(presentation,/function drawHoming\(state,fighter\)/);
+  assert.match(presentation,/bullet\.homing/);
+  assert.match(page,/\.homing-active\{color:#ffe85b/);
   assert.doesNotMatch(page,/function draw\(/);
 });
 

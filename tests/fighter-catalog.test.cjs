@@ -2,9 +2,9 @@ const assert=require('node:assert/strict');
 const test=require('node:test');
 const FighterCatalog=require('../fighter-catalog.js');
 
-test('lists the three selectable fighters with complete visual and skill descriptions',()=>{
+test('lists the four selectable fighters with complete visual and skill descriptions',()=>{
   const fighters=FighterCatalog.list();
-  assert.deepEqual(fighters.map(f=>f.id),['azure','silver','green']);
+  assert.deepEqual(fighters.map(f=>f.id),['azure','silver','green','yellow']);
   for(const fighter of fighters){
     assert.equal(FighterCatalog.get(fighter.id),fighter);
     assert.equal(fighter.speed,320);
@@ -24,4 +24,6 @@ test('keeps skill visual descriptors separate from the pure ability rules',()=>{
   assert.deepEqual(FighterCatalog.get('azure').visual.effect,{kind:'shockwave',color:'#57eaff'});
   assert.deepEqual(FighterCatalog.get('silver').visual.effect,{kind:'stealth',color:'#d9eeff'});
   assert.deepEqual(FighterCatalog.get('green').visual.effect,{kind:'wingmen',color:'#65ff9a'});
+  assert.deepEqual(FighterCatalog.get('yellow').visual.effect,{kind:'homing',color:'#ffe85b'});
+  assert.equal(FighterCatalog.constants.homingDuration,5000);
 });

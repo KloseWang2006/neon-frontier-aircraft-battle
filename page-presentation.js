@@ -56,6 +56,11 @@
       const positions=[{x:state.player.x-16,y:state.player.y+22},{x:state.player.x+46,y:state.player.y+22}],t=state.wingmenMs/catalog.constants.wingmenDuration,color=fighter.visual.effect.color;
       context.save();context.globalCompositeOperation='screen';context.strokeStyle=color;context.shadowColor=color;context.shadowBlur=15;context.globalAlpha=.35+.35*t;for(const position of positions){context.beginPath();context.moveTo(position.x+15,position.y+25);context.lineTo(position.x+15,position.y+44);context.stroke();sprite(images[fighter.id],position.x,position.y,30,27,color)}context.restore();
     }
+    function drawHoming(state,fighter){
+      if(fighter.visual.effect.kind!=='homing'||state.homingMs<=0)return;
+      const t=state.homingMs/catalog.constants.homingDuration,cx=state.player.x+30,cy=state.player.y+27,color=fighter.visual.effect.color;
+      context.save();context.globalCompositeOperation='screen';context.globalAlpha=.32+.32*t;context.strokeStyle=color;context.shadowColor=color;context.shadowBlur=20;context.lineWidth=2.5;context.beginPath();context.arc(cx,cy,39+(1-t)*18,0,Math.PI*2);context.stroke();for(let index=0;index<8;index++){const angle=index*Math.PI/4+(1-t)*4;context.fillStyle='#fff5a5';context.fillRect(cx+Math.cos(angle)*48,cy+Math.sin(angle)*48,3,3)}const target=state.enemies.reduce((closest,enemy)=>!closest||Math.hypot(enemy.x+enemy.w/2-cx,enemy.y+enemy.h/2-cy)<Math.hypot(closest.x+closest.w/2-cx,closest.y+closest.h/2-cy)?enemy:closest,null)||state.boss;if(target){context.globalAlpha=.65;context.strokeStyle='#fff08a';context.lineWidth=2;context.beginPath();context.arc(target.x+target.w/2,target.y+target.h/2,Math.max(target.w,target.h)*.65,0,Math.PI*2);context.stroke()}context.restore();
+    }
     function drawPlayer(state,fighter){
       const image=images[fighter.id],rotation=fighter.visual.orientation;
       if(image&&image.complete&&image.naturalWidth&&rotation){context.save();context.globalCompositeOperation='screen';context.translate(state.player.x+30,state.player.y+27);context.rotate(rotation*Math.PI/180);context.drawImage(image,-30,-27,60,54);context.restore();return}
@@ -64,14 +69,14 @@
     function draw(state){
       const fighter=catalog.get(state.fighterId);context.fillStyle='#05061a';context.fillRect(0,0,480,720);
       if(images.star&&images.star.complete){context.globalAlpha=.5;context.drawImage(images.star,0,0,480,720);context.globalAlpha=1}
-      for(const bullet of state.bullets)sprite(null,bullet.x,bullet.y,bullet.w,bullet.h,bullet.color||'#5ef');
+      for(const bullet of state.bullets){if(bullet.homing){context.save();context.globalCompositeOperation='screen';context.strokeStyle=bullet.color||'#ffe85b';context.shadowColor=bullet.color||'#ffe85b';context.shadowBlur=10;context.lineWidth=2;context.globalAlpha=.6;context.beginPath();context.moveTo(bullet.x+bullet.w/2,bullet.y+bullet.h);context.lineTo(bullet.x+bullet.w/2-bullet.vx*.025,bullet.y+bullet.h-bullet.vy*.025);context.stroke();context.restore()}sprite(null,bullet.x,bullet.y,bullet.w,bullet.h,bullet.color||'#5ef')}
       for(const bullet of state.enemyBullets)sprite(null,bullet.x,bullet.y,bullet.w,bullet.h,'#f5c');
       for(const enemy of state.enemies)sprite(images[enemy.kind],enemy.x,enemy.y,enemy.w,enemy.h,'#d5f');
       for(const powerup of state.powerups)sprite(images[powerup.kind],powerup.x,powerup.y,powerup.w,powerup.h,powerup.kind==='heal'?'#71ff96':'#fd6');
       if(state.boss){sprite(images.boss,state.boss.x,state.boss.y,state.boss.w,state.boss.h,'#f5c');context.fillStyle='#261338';context.fillRect(118,18,244,8);context.fillStyle='#f35bd8';context.fillRect(120,20,240*state.boss.hp/state.boss.maxHp,4)}
       if(state.shieldAvailable){context.strokeStyle='#58e7ff';context.lineWidth=2;context.shadowColor='#58e7ff';context.shadowBlur=12;context.beginPath();context.arc(state.player.x+30,state.player.y+28,40,0,Math.PI*2);context.stroke();context.shadowBlur=0}
       if(state.healFlashMs>0){const t=state.healFlashMs/700;context.save();context.globalAlpha=.25+.55*t;context.strokeStyle='#71ff96';context.lineWidth=3;context.shadowColor='#71ff96';context.shadowBlur=18;context.beginPath();context.arc(state.player.x+30,state.player.y+28,42+(1-t)*18,0,Math.PI*2);context.stroke();context.font='bold 16px PingFang SC, sans-serif';context.textAlign='center';context.fillStyle='#b8ffc8';context.fillText('生命 +1',state.player.x+30,state.player.y-14-(1-t)*12);context.restore()}
-      drawStealth(state,fighter);drawWingmen(state,fighter);
+      drawStealth(state,fighter);drawWingmen(state,fighter);drawHoming(state,fighter);
       if(fighter.rules.isInvulnerable(state)||!state.player.invincibleMs||Math.floor(state.player.invincibleMs/80)%2===0){context.save();if(fighter.rules.isInvulnerable(state))context.globalAlpha=.34;drawPlayer(state,fighter);context.restore()}
       drawShockwave(state,fighter);
     }

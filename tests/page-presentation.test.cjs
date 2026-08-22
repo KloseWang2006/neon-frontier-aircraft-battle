@@ -15,14 +15,14 @@ function makeDocument(){
   const control=name=>dynamic[name]??=(new Element());
   const document={defaultView:{},querySelector(selector){if(elements[selector])return elements[selector];if(['#go','#close','#again','#save','#pid'].includes(selector))return control(selector);return null},querySelectorAll(selector){if(selector==='[data-k]')return directions;if(selector==='[data-fighter]')return fighters;return[]}};
   const directions=['up','left','down','right'].map(direction=>new Element({k:direction}));
-  const fighters=['azure','silver','green'].map(fighter=>new Element({fighter}));
+  const fighters=['azure','silver','green','yellow'].map(fighter=>new Element({fighter}));
   elements['#fighterOptions'].querySelectorAll=selector=>selector==='[data-fighter]'?fighters:[];
   const calls=[];
   const context=new Proxy({}, {get(_,key){if(key==='canvas')return canvas;return(...args)=>calls.push([key,...args])},set(){return true}});
   const canvas=new Element();canvas.getContext=()=>context;
   return{document,canvas,elements,dynamic,directions,fighters,calls};
 }
-const snapshot=({game={},view={},best=1200,board=[{id:'ace',score:1200,time:10000}]}={})=>({game:{fighterId:'azure',score:250,lives:undefined,status:'ready',player:{x:210,y:630,lives:3,invincibleMs:0},bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,wingmenMs:0,shieldAvailable:false,elapsedMs:0,...game},view:{overlay:'ready',notice:null,canRegister:false,endReason:null,...view},best,board});
+const snapshot=({game={},view={},best=1200,board=[{id:'ace',score:1200,time:10000}]}={})=>({game:{fighterId:'azure',score:250,lives:undefined,status:'ready',player:{x:210,y:630,lives:3,invincibleMs:0},bullets:[],enemyBullets:[],enemies:[],powerups:[],boss:null,shieldMs:0,spreadMs:0,doubleMs:0,healFlashMs:0,skillCharge:0,skillCooldownMs:0,shockwaveFlashMs:0,stealthMs:0,wingmenMs:0,homingMs:0,shieldAvailable:false,elapsedMs:0,...game},view:{overlay:'ready',notice:null,canRegister:false,endReason:null,...view},best,board});
 
 test('renders HUD, dynamic fighter choices, and canvas fallback from a session snapshot',()=>{
   const fake=makeDocument(),intents=[];
@@ -31,6 +31,7 @@ test('renders HUD, dynamic fighter choices, and canvas fallback from a session s
   assert.equal(fake.elements['#score'].textContent,'000250');
   assert.equal(fake.elements['#best'].textContent,'001200');
   assert.match(fake.elements['#fighterOptions'].innerHTML,/青岚影忍/);
+  assert.match(fake.elements['#fighterOptions'].innerHTML,/曜金流星/);
   assert.match(fake.elements['#modal'].innerHTML,/准备起飞/);
   assert.ok(fake.calls.some(call=>call[0]==='fillRect'));
   fake.fighters[1].fire('click');
