@@ -150,6 +150,7 @@ test('renders HUD, dynamic fighter choices, and canvas fallback from a session s
   page.render(snapshot());
   assert.equal(fake.elements['#score'].textContent, '000250');
   assert.equal(fake.elements['#best'].textContent, '001200');
+  assert.match(fake.elements['#skillButton'].textContent, /Q · 充能技/);
   assert.match(fake.elements['#fighterOptions'].innerHTML, /青岚影忍/);
   assert.match(fake.elements['#fighterOptions'].innerHTML, /曜金流星/);
   assert.match(fake.elements['#modal'].innerHTML, /准备起飞/);
@@ -215,6 +216,7 @@ test('renders the Azure Storm shield utility HUD and emits its E intent', () => 
   assert.equal(fake.elements['#shieldSkillName'].textContent, '潮涌屏障');
   assert.equal(fake.elements['#shieldSkillStatus'].textContent, '可释放');
   assert.equal(fake.elements['#shieldButton'].disabled, false);
+  assert.match(fake.elements['#shieldButton'].textContent, /E · 普通技 · 潮涌屏障/);
   fake.elements['#shieldButton'].fire('click');
   assert.deepEqual(fake.intents, [{ type: 'blink' }]);
   page.render(

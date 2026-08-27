@@ -127,7 +127,7 @@
       skillStatus.className =
         activeMs > 0 ? fighter.visual.statusClass : skillReady ? 'shockwave-ready' : '';
       const skillButton = $('#skillButton');
-      skillButton.textContent = 'Q · ' + fighter.skillName;
+      skillButton.textContent = 'Q · 充能技 · ' + fighter.skillName;
       skillButton.disabled = !skillReady;
       const blinkCard = $('#blinkCard'),
         blinkButton = $('#blinkButton'),
@@ -157,7 +157,7 @@
               ? 'blink-cooldown'
               : 'blink-ready';
         blinkButton.textContent =
-          blinkMarker && blinkMarker.locked ? 'E · 二段瞬闪' : 'E · 瞬闪突袭';
+          blinkMarker && blinkMarker.locked ? 'E · 普通技 · 二段瞬闪' : 'E · 普通技 · 瞬闪突袭';
         blinkButton.disabled =
           Boolean(blinkMarker && !blinkMarker.locked) ||
           (!blinkMarker && state.blinkCooldownMs > 0);
@@ -183,7 +183,7 @@
             : state.shieldSkillCooldownMs > 0
               ? 'shield-skill-cooldown'
               : 'shield-skill-ready';
-        shieldButton.textContent = 'E · ' + shieldAbility.name;
+        shieldButton.textContent = 'E · 普通技 · ' + shieldAbility.name;
         shieldButton.disabled = state.shieldSkillMs > 0 || state.shieldSkillCooldownMs > 0;
       }
       document.querySelectorAll('[data-fighter]').forEach((button) => {
