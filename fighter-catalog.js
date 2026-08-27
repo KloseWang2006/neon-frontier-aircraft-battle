@@ -17,6 +17,9 @@
     blinkMarkerSpeed: 820,
     blinkDamage: 3,
     blinkFlash: 460,
+    shieldSkillDuration: 5000,
+    shieldSkillCooldown: 30000,
+    shieldSkillReduction: 5000,
   });
   const noOp = () => {};
   const noShotDecoration = () => {};
@@ -120,6 +123,15 @@
         statusClass: null,
       },
       rules: shockwaveRules,
+      utility: {
+        kind: 'shield',
+        name: '潮涌屏障',
+        key: 'E',
+        durationMs: constants.shieldSkillDuration,
+        cooldownMs: constants.shieldSkillCooldown,
+        reductionMs: constants.shieldSkillReduction,
+        color: '#57eaff',
+      },
     }),
     silver: fighter({
       id: 'silver',

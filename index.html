@@ -328,6 +328,24 @@
     .blink-cooldown {
       color: #c8b77e;
     }
+    .shield-card {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #3f9dce;
+      border-radius: 10px;
+      background: #0b284244;
+    }
+    .shield-skill-ready {
+      color: #72f1ff;
+      text-shadow: 0 0 10px #58e7ff;
+    }
+    .shield-skill-active {
+      color: #b9fbff;
+      text-shadow: 0 0 12px #58e7ff;
+    }
+    .shield-skill-cooldown {
+      color: #9eb6c8;
+    }
   </style>
   <style>
     .page {
@@ -396,6 +414,12 @@
                 <span id="blinkName">瞬闪突袭</span><b id="blinkStatus">可标记</b>
               </div>
               <button class="btn skill-btn" id="blinkButton">E · 瞬闪突袭</button>
+            </div>
+            <div class="shield-card" id="shieldCard" hidden>
+              <div class="row">
+                <span id="shieldSkillName">潮涌屏障</span><b id="shieldSkillStatus">可释放</b>
+              </div>
+              <button class="btn skill-btn" id="shieldButton">E · 潮涌屏障</button>
             </div>
           </section>
           <section class="card">

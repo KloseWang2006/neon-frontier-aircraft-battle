@@ -24,7 +24,10 @@
     BLINK_TRACKED_COOLDOWN = FighterCatalog.constants.blinkTrackedCooldown,
     BLINK_EMPTY_COOLDOWN = FighterCatalog.constants.blinkEmptyCooldown,
     BLINK_WINDOW = FighterCatalog.constants.blinkWindow,
-    BLINK_DAMAGE = FighterCatalog.constants.blinkDamage;
+    BLINK_DAMAGE = FighterCatalog.constants.blinkDamage,
+    SHIELD_SKILL_DURATION = FighterCatalog.constants.shieldSkillDuration,
+    SHIELD_SKILL_COOLDOWN = FighterCatalog.constants.shieldSkillCooldown,
+    SHIELD_SKILL_REDUCTION = FighterCatalog.constants.shieldSkillReduction;
   const FIGHTERS = FighterCatalog.fighters;
   const PLAYER = { x: 210, y: 630, w: 60, h: 54, lives: MAX_LIVES, invincibleMs: 0 };
   const THRESHOLDS = [10000, 30000, 50000, 100000],
@@ -74,6 +77,9 @@
       blinkCooldownMs: 0,
       blinkMarker: null,
       blinkFlash: null,
+      shieldSkillCooldownMs: 0,
+      shieldSkillMs: 0,
+      shieldSkillArmed: false,
       shieldAvailable: false,
       triggered: [],
       bossesDefeated: [],
@@ -92,6 +98,9 @@
       bossesDefeated: [...(o.bossesDefeated || [])],
       blinkMarker: o.blinkMarker ? { ...o.blinkMarker } : null,
       blinkFlash: o.blinkFlash ? { ...o.blinkFlash } : null,
+      shieldSkillCooldownMs: Math.max(0, o.shieldSkillCooldownMs || 0),
+      shieldSkillMs: Math.max(0, o.shieldSkillMs || 0),
+      shieldSkillArmed: Boolean(o.shieldSkillArmed),
     };
   }
 
@@ -184,11 +193,39 @@
     if (s.shieldAvailable) {
       s.shieldAvailable = false;
       s.shieldMs = 0;
+      s.shieldSkillMs = 0;
+      s.shieldSkillArmed = false;
       return;
     }
     s.player.lives--;
     s.player.invincibleMs = 750;
     if (s.player.lives <= 0) s.status = 'over';
+  }
+
+  function shieldAbility(s) {
+    return fighter(s).utility && fighter(s).utility.kind === 'shield' ? fighter(s).utility : null;
+  }
+  function tickShieldSkill(s, ms, events) {
+    const wasArmed = s.shieldSkillArmed;
+    s.shieldSkillCooldownMs = Math.max(0, s.shieldSkillCooldownMs - ms);
+    s.shieldSkillMs = Math.max(0, s.shieldSkillMs - ms);
+    if (wasArmed && s.shieldSkillMs === 0) {
+      s.shieldSkillArmed = false;
+      s.shieldAvailable = false;
+      s.shieldMs = 0;
+      s.shieldSkillCooldownMs = Math.max(0, s.shieldSkillCooldownMs - SHIELD_SKILL_REDUCTION);
+      events.push({ type: 'shield-skill-expired', reducedCooldownMs: SHIELD_SKILL_REDUCTION });
+    }
+  }
+  function activateShieldSkill(s, events) {
+    const ability = shieldAbility(s);
+    if (!ability || s.shieldSkillCooldownMs > 0 || s.shieldSkillMs > 0) return;
+    s.shieldSkillCooldownMs = ability.cooldownMs;
+    s.shieldSkillMs = ability.durationMs;
+    s.shieldSkillArmed = true;
+    s.shieldAvailable = true;
+    s.shieldMs = ability.durationMs;
+    events.push({ type: 'shield-skill-activated' });
   }
 
   function blinkAbility(s) {
@@ -330,6 +367,7 @@
     s.doubleMs = Math.max(0, s.doubleMs - ms);
     s.healFlashMs = Math.max(0, s.healFlashMs - ms);
     s.skillCooldownMs = Math.max(0, s.skillCooldownMs - ms);
+    tickShieldSkill(s, ms, events);
     s.blinkCooldownMs = Math.max(0, s.blinkCooldownMs - ms);
     if (s.blinkFlash) {
       s.blinkFlash.remainingMs = Math.max(0, s.blinkFlash.remainingMs - ms);
@@ -478,8 +516,10 @@
     }
     tickBlinkMarker(s, 0, events);
     if (input.blink) {
-      if (s.blinkMarker) triggerBlink(s, events);
-      else launchBlink(s, random, events);
+      if (blinkAbility(s)) {
+        if (s.blinkMarker) triggerBlink(s, events);
+        else launchBlink(s, random, events);
+      } else activateShieldSkill(s, events);
     }
     for (const b of s.enemyBullets)
       if (hit(b, s.player)) {
@@ -538,6 +578,9 @@
       BLINK_EMPTY_COOLDOWN,
       BLINK_WINDOW,
       BLINK_DAMAGE,
+      SHIELD_SKILL_DURATION,
+      SHIELD_SKILL_COOLDOWN,
+      SHIELD_SKILL_REDUCTION,
     },
   };
 });

@@ -48,6 +48,10 @@ function makeDocument() {
       '#blinkName',
       '#blinkStatus',
       '#blinkButton',
+      '#shieldCard',
+      '#shieldSkillName',
+      '#shieldSkillStatus',
+      '#shieldButton',
       '#notice',
       '#rank',
       '#overlay',
@@ -190,6 +194,36 @@ test('renders the yellow fighter blink HUD states and hides it for other fighter
   assert.equal(fake.elements['#blinkButton'].disabled, false);
   page.render(snapshot({ game: { fighterId: 'azure' } }));
   assert.equal(fake.elements['#blinkCard'].hidden, true);
+  page.destroy();
+});
+
+test('renders the Azure Storm shield utility HUD and emits its E intent', () => {
+  const fake = makeDocument();
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+    onIntent: (intent) => fake.intents.push(intent),
+  });
+  fake.intents = [];
+  page.render(
+    snapshot({
+      game: { fighterId: 'azure', shieldSkillCooldownMs: 0, shieldSkillMs: 0 },
+    }),
+  );
+  assert.equal(fake.elements['#shieldCard'].hidden, false);
+  assert.equal(fake.elements['#shieldSkillName'].textContent, '潮涌屏障');
+  assert.equal(fake.elements['#shieldSkillStatus'].textContent, '可释放');
+  assert.equal(fake.elements['#shieldButton'].disabled, false);
+  fake.elements['#shieldButton'].fire('click');
+  assert.deepEqual(fake.intents, [{ type: 'blink' }]);
+  page.render(
+    snapshot({
+      game: { fighterId: 'azure', shieldSkillCooldownMs: 30000, shieldSkillMs: 0 },
+    }),
+  );
+  assert.match(fake.elements['#shieldSkillStatus'].textContent, /冷却/);
+  assert.equal(fake.elements['#shieldButton'].disabled, true);
   page.destroy();
 });
 

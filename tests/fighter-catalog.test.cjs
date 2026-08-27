@@ -21,6 +21,15 @@ test('lists the four selectable fighters with complete visual and skill descript
     assert.equal(typeof fighter.rules.afterVolley, 'function');
   }
   assert.equal(FighterCatalog.get('missing'), undefined);
+  assert.deepEqual(FighterCatalog.get('azure').utility, {
+    kind: 'shield',
+    name: '潮涌屏障',
+    key: 'E',
+    durationMs: 5000,
+    cooldownMs: 30000,
+    reductionMs: 5000,
+    color: '#57eaff',
+  });
   assert.deepEqual(
     [
       FighterCatalog.get('yellow').utility.trackedCooldownMs,

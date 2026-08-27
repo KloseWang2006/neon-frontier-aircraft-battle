@@ -162,6 +162,30 @@
           Boolean(blinkMarker && !blinkMarker.locked) ||
           (!blinkMarker && state.blinkCooldownMs > 0);
       }
+      const shieldCard = $('#shieldCard'),
+        shieldButton = $('#shieldButton'),
+        shieldStatus = $('#shieldSkillStatus'),
+        shieldAbility =
+          fighter.utility && fighter.utility.kind === 'shield' ? fighter.utility : null;
+      if (shieldCard) shieldCard.hidden = !shieldAbility;
+      if (shieldAbility && shieldButton && shieldStatus) {
+        const status =
+          state.shieldSkillMs > 0
+            ? '屏障中 ' + (state.shieldSkillMs / 1000).toFixed(1) + 's'
+            : state.shieldSkillCooldownMs > 0
+              ? '冷却 ' + (state.shieldSkillCooldownMs / 1000).toFixed(1) + 's'
+              : '可释放';
+        $('#shieldSkillName').textContent = shieldAbility.name;
+        shieldStatus.textContent = status;
+        shieldStatus.className =
+          state.shieldSkillMs > 0
+            ? 'shield-skill-active'
+            : state.shieldSkillCooldownMs > 0
+              ? 'shield-skill-cooldown'
+              : 'shield-skill-ready';
+        shieldButton.textContent = 'E · ' + shieldAbility.name;
+        shieldButton.disabled = state.shieldSkillMs > 0 || state.shieldSkillCooldownMs > 0;
+      }
       document.querySelectorAll('[data-fighter]').forEach((button) => {
         const chosen = button.dataset.fighter === state.fighterId;
         button.classList.toggle('selected', chosen);
@@ -358,6 +382,29 @@
         context.restore();
       }
     }
+    function drawShieldSkill(state, fighter) {
+      if (!fighter.utility || fighter.utility.kind !== 'shield' || state.shieldSkillMs <= 0) return;
+      const t = state.shieldSkillMs / fighter.utility.durationMs,
+        cx = state.player.x + 30,
+        cy = state.player.y + 28,
+        color = fighter.utility.color;
+      context.save();
+      context.globalCompositeOperation = 'screen';
+      context.globalAlpha = 0.25 + 0.45 * t;
+      context.strokeStyle = color;
+      context.shadowColor = color;
+      context.shadowBlur = 24;
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(cx, cy, 44 + (1 - t) * 9, 0, Math.PI * 2);
+      context.stroke();
+      context.globalAlpha = 0.25 * t;
+      context.fillStyle = color;
+      context.beginPath();
+      context.arc(cx, cy, 38 + (1 - t) * 8, 0, Math.PI * 2);
+      context.fill();
+      context.restore();
+    }
     function drawPlayer(state, fighter) {
       const image = images[fighter.id],
         rotation = fighter.visual.orientation;
@@ -452,6 +499,7 @@
       drawWingmen(state, fighter);
       drawHoming(state, fighter);
       drawBlink(state, fighter);
+      drawShieldSkill(state, fighter);
       if (
         fighter.rules.isInvulnerable(state) ||
         !state.player.invincibleMs ||
@@ -536,6 +584,7 @@
     bind($('#restart'), 'click', () => emit({ type: 'restart' }));
     bind($('#skillButton'), 'click', () => emit({ type: 'skill' }));
     bind($('#blinkButton'), 'click', () => emit({ type: 'blink' }));
+    bind($('#shieldButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#rankBtn'), 'click', () => {
       localOverlay = 'rank';
       renderModal(current);

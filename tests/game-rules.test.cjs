@@ -539,6 +539,40 @@ test('目标先被击毁后，瞬闪仍可无伤位移；标记五秒过期且�
   assert.equal(run(s, { dt: 16 }).state.blinkMarker, null);
 });
 
+test('蔚蓝风暴潮涌屏障按 E 获得五秒护盾，未触发时冷却缩短五秒', () => {
+  let r = run(GameRules.create({ fighterId: 'azure' }), { dt: 0, input: { blink: true } });
+  assert.equal(r.state.shieldSkillMs, 5000);
+  assert.equal(r.state.shieldSkillCooldownMs, 30000);
+  assert.equal(r.state.shieldAvailable, true);
+  r = run(r.state, { dt: 5000 });
+  assert.equal(r.state.shieldSkillMs, 0);
+  assert.equal(r.state.shieldSkillCooldownMs, 20000);
+  assert.equal(r.state.shieldAvailable, false);
+  r = run(GameRules.create({ fighterId: 'azure' }), { dt: 0, input: { blink: true } });
+  r = run({ ...r.state, enemyBullets: [{ x: 235, y: 640, w: 8, h: 14, vx: 0, vy: 0 }] }, { dt: 0 });
+  assert.equal(r.state.player.lives, 3);
+  assert.equal(r.state.shieldSkillMs, 0);
+  assert.equal(r.state.shieldSkillCooldownMs, 30000);
+  assert.equal(r.state.shieldSkillArmed, false);
+});
+
+test('潮涌屏障暂停冻结，非蔚蓝风暴按 E 无效果', () => {
+  let s = GameRules.create({
+    fighterId: 'azure',
+    status: 'paused',
+    shieldSkillMs: 5000,
+    shieldSkillCooldownMs: 30000,
+    shieldSkillArmed: true,
+  });
+  let r = run(s, { dt: 6000, input: { blink: true } });
+  assert.equal(r.state.shieldSkillMs, 5000);
+  assert.equal(r.state.shieldSkillCooldownMs, 30000);
+  s = GameRules.create({ fighterId: 'silver' });
+  r = run(s, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.shieldSkillMs, 0);
+  assert.equal(r.state.shieldSkillCooldownMs, 0);
+});
+
 test('无目标标记过期不会消耗冷却，且暂停冻结原地标记', () => {
   let s = GameRules.create({
     fighterId: 'yellow',
