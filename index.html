@@ -310,6 +310,24 @@
       color: #ffe85b;
       text-shadow: 0 0 10px #ffc75a;
     }
+    .blink-card {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #d8a93f;
+      border-radius: 10px;
+      background: #2a210b55;
+    }
+    .blink-ready {
+      color: #ffe85b;
+      text-shadow: 0 0 10px #ffc75a;
+    }
+    .blink-locked {
+      color: #fff0a0;
+      text-shadow: 0 0 10px #ffe85b;
+    }
+    .blink-cooldown {
+      color: #c8b77e;
+    }
   </style>
   <style>
     .page {
@@ -373,6 +391,12 @@
               <div class="row"><span>技能状态</span><b id="skillStatus">充能中</b></div>
               <button class="btn skill-btn" id="skillButton" disabled>Q · 技能</button>
             </div>
+            <div class="blink-card" id="blinkCard" hidden>
+              <div class="row">
+                <span id="blinkName">瞬闪突袭</span><b id="blinkStatus">可标记</b>
+              </div>
+              <button class="btn skill-btn" id="blinkButton">E · 瞬闪突袭</button>
+            </div>
           </section>
           <section class="card">
             <button class="btn" id="rankBtn">查看排行榜</button>
@@ -434,6 +458,7 @@
         if (intent.type === 'select-fighter')
           session = RunSession.selectFighter(session, intent.fighterId);
         if (intent.type === 'skill' && session.game.status === 'running') keys.skill = true;
+        if (intent.type === 'blink' && session.game.status === 'running') keys.blink = true;
         if (intent.type === 'direction') keys[intent.direction] = intent.pressed;
         if (intent.type === 'register') session = RunSession.register(session, intent.id);
         render();
@@ -458,6 +483,11 @@
           event.preventDefault();
           return;
         }
+        if (event.key === 'e' || event.key === 'E') {
+          if (!event.repeat) dispatch({ type: 'blink' });
+          event.preventDefault();
+          return;
+        }
         if (keyMap[event.key]) {
           keys[keyMap[event.key]] = true;
           event.preventDefault();
@@ -477,6 +507,7 @@
         if (session.game.status === 'running') {
           session = RunSession.advance(session, { dt, input: keys, random: Math.random });
           keys.skill = false;
+          keys.blink = false;
         }
         render();
       }

@@ -44,6 +44,10 @@ function makeDocument() {
       '#skillMeter',
       '#skillStatus',
       '#skillButton',
+      '#blinkCard',
+      '#blinkName',
+      '#blinkStatus',
+      '#blinkButton',
       '#notice',
       '#rank',
       '#overlay',
@@ -151,6 +155,44 @@ test('renders HUD, dynamic fighter choices, and canvas fallback from a session s
   page.destroy();
 });
 
+test('renders the yellow fighter blink HUD states and hides it for other fighters', () => {
+  const fake = makeDocument();
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+  });
+  page.render(snapshot({ game: { fighterId: 'yellow', blinkCooldownMs: 0, blinkMarker: null } }));
+  assert.equal(fake.elements['#blinkCard'].hidden, false);
+  assert.equal(fake.elements['#blinkStatus'].textContent, '可标记');
+  assert.equal(fake.elements['#blinkButton'].disabled, false);
+  page.render(
+    snapshot({
+      game: {
+        fighterId: 'yellow',
+        blinkCooldownMs: 1000,
+        blinkMarker: { locked: false, remainingMs: 4000 },
+      },
+    }),
+  );
+  assert.match(fake.elements['#blinkStatus'].textContent, /标记追踪/);
+  assert.equal(fake.elements['#blinkButton'].disabled, true);
+  page.render(
+    snapshot({
+      game: {
+        fighterId: 'yellow',
+        blinkCooldownMs: 0,
+        blinkMarker: { locked: true, noTarget: true, remainingMs: 4800 },
+      },
+    }),
+  );
+  assert.match(fake.elements['#blinkStatus'].textContent, /原地待命/);
+  assert.equal(fake.elements['#blinkButton'].disabled, false);
+  page.render(snapshot({ game: { fighterId: 'azure' } }));
+  assert.equal(fake.elements['#blinkCard'].hidden, true);
+  page.destroy();
+});
+
 test('turns overlays and touch controls into intents while keeping ranking local', () => {
   const fake = makeDocument(),
     intents = [];
@@ -166,11 +208,13 @@ test('turns overlays and touch controls into intents while keeping ranking local
   fake.directions[0].fire('pointerdown');
   fake.directions[0].fire('pointerup');
   fake.elements['#skillButton'].fire('click');
+  fake.elements['#blinkButton'].fire('click');
   assert.deepEqual(intents.splice(0), [
     { type: 'start' },
     { type: 'direction', direction: 'up', pressed: true },
     { type: 'direction', direction: 'up', pressed: false },
     { type: 'skill' },
+    { type: 'blink' },
   ]);
   fake.elements['#rankBtn'].fire('click');
   assert.match(fake.elements['#modal'].innerHTML, /排行榜/);

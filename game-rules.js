@@ -19,7 +19,12 @@
     STEALTH_DURATION = FighterCatalog.constants.stealthDuration,
     WINGMEN_DURATION = FighterCatalog.constants.wingmenDuration,
     HOMING_DURATION = FighterCatalog.constants.homingDuration,
-    HOMING_TURN_RATE = FighterCatalog.constants.homingTurnRate;
+    HOMING_TURN_RATE = FighterCatalog.constants.homingTurnRate,
+    BLINK_COOLDOWN = FighterCatalog.constants.blinkCooldown,
+    BLINK_TRACKED_COOLDOWN = FighterCatalog.constants.blinkTrackedCooldown,
+    BLINK_EMPTY_COOLDOWN = FighterCatalog.constants.blinkEmptyCooldown,
+    BLINK_WINDOW = FighterCatalog.constants.blinkWindow,
+    BLINK_DAMAGE = FighterCatalog.constants.blinkDamage;
   const FIGHTERS = FighterCatalog.fighters;
   const PLAYER = { x: 210, y: 630, w: 60, h: 54, lives: MAX_LIVES, invincibleMs: 0 };
   const THRESHOLDS = [10000, 30000, 50000, 100000],
@@ -33,6 +38,8 @@
     enemies: s.enemies.map((v) => ({ ...v })),
     powerups: s.powerups.map((v) => ({ ...v })),
     boss: s.boss && { ...s.boss },
+    blinkMarker: s.blinkMarker && { ...s.blinkMarker },
+    blinkFlash: s.blinkFlash && { ...s.blinkFlash },
     triggered: [...s.triggered],
     bossesDefeated: [...s.bossesDefeated],
   });
@@ -64,6 +71,9 @@
       stealthMs: 0,
       wingmenMs: 0,
       homingMs: 0,
+      blinkCooldownMs: 0,
+      blinkMarker: null,
+      blinkFlash: null,
       shieldAvailable: false,
       triggered: [],
       bossesDefeated: [],
@@ -80,6 +90,8 @@
       powerups: (o.powerups || []).map((v) => ({ ...v })),
       triggered: [...(o.triggered || [])],
       bossesDefeated: [...(o.bossesDefeated || [])],
+      blinkMarker: o.blinkMarker ? { ...o.blinkMarker } : null,
+      blinkFlash: o.blinkFlash ? { ...o.blinkFlash } : null,
     };
   }
 
@@ -179,6 +191,133 @@
     if (s.player.lives <= 0) s.status = 'over';
   }
 
+  function blinkAbility(s) {
+    return fighter(s).utility && fighter(s).utility.kind === 'blink' ? fighter(s).utility : null;
+  }
+  function markerPoint(enemy) {
+    return { x: enemy.x + enemy.w / 2 - 5, y: enemy.y + enemy.h + 12 };
+  }
+  function blinkLanding(s, point) {
+    return {
+      x: Math.max(0, Math.min(W - s.player.w, point.x + 5 - s.player.w / 2)),
+      y: Math.max(TOP, Math.min(H - s.player.h, point.y)),
+    };
+  }
+  function blinkCandidate(s, enemy) {
+    const point = markerPoint(enemy),
+      landing = blinkLanding(s, point),
+      centerY = enemy.y + enemy.h / 2;
+    return centerY >= TOP && centerY <= H && landing.y === point.y;
+  }
+  function tickBlinkMarker(s, ms, events) {
+    const marker = s.blinkMarker;
+    if (!marker) return;
+    marker.remainingMs = Math.max(0, marker.remainingMs - ms);
+    if (!marker.remainingMs) {
+      s.blinkMarker = null;
+      events.push({ type: 'blink-expired' });
+      return;
+    }
+    const target =
+      marker.targetId == null ? null : s.enemies.find((enemy) => enemy.id === marker.targetId);
+    if (!target) {
+      if (marker.noTarget) return;
+      if (!marker.lost) events.push({ type: 'blink-target-lost' });
+      marker.targetId = null;
+      marker.lost = true;
+      marker.locked = true;
+      return;
+    }
+    const point = markerPoint(target);
+    if (marker.locked) {
+      marker.x = point.x;
+      marker.y = point.y;
+      return;
+    }
+    const dx = point.x - marker.x,
+      dy = point.y - marker.y,
+      distance = Math.hypot(dx, dy),
+      step = (blinkAbility(s).markerSpeed * ms) / 1000;
+    if (!distance || distance <= step) {
+      marker.x = point.x;
+      marker.y = point.y;
+      marker.locked = true;
+      events.push({ type: 'blink-locked' });
+    } else {
+      marker.x += (dx / distance) * step;
+      marker.y += (dy / distance) * step;
+    }
+  }
+  function launchBlink(s, random, events) {
+    const ability = blinkAbility(s);
+    if (!ability || s.blinkCooldownMs > 0 || s.blinkMarker) return;
+    const candidates = s.enemies.filter((enemy) => blinkCandidate(s, enemy));
+    if (!candidates.length) {
+      s.blinkMarker = {
+        x: s.player.x + s.player.w / 2 - 5,
+        y: s.player.y - 14,
+        w: 10,
+        h: 14,
+        targetId: null,
+        locked: true,
+        lost: false,
+        noTarget: true,
+        remainingMs: ability.windowMs,
+        cooldownAfterMs: ability.emptyCooldownMs,
+      };
+      events.push({ type: 'blink-idle' });
+      return;
+    }
+    const target =
+      candidates[Math.min(candidates.length - 1, Math.floor(random() * candidates.length))];
+    s.blinkMarker = {
+      x: s.player.x + s.player.w / 2 - 5,
+      y: s.player.y - 14,
+      w: 10,
+      h: 14,
+      targetId: target.id,
+      locked: false,
+      lost: false,
+      noTarget: false,
+      remainingMs: ability.windowMs,
+      cooldownAfterMs: ability.trackedCooldownMs,
+    };
+    events.push({ type: 'blink-launched', targetId: target.id });
+  }
+  function triggerBlink(s, events) {
+    const ability = blinkAbility(s),
+      marker = s.blinkMarker;
+    if (!ability || !marker || !marker.locked) return;
+    const target =
+        marker.targetId == null ? null : s.enemies.find((enemy) => enemy.id === marker.targetId),
+      from = { x: s.player.x + s.player.w / 2, y: s.player.y + s.player.h / 2 },
+      destination = blinkLanding(s, target ? markerPoint(target) : marker);
+    s.player.x = destination.x;
+    s.player.y = destination.y;
+    let hitTarget = null;
+    if (target) {
+      target.hp -= ability.damage;
+      hitTarget = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
+      if (target.hp <= 0) {
+        s.score += target.score;
+        s.enemies = s.enemies.filter((enemy) => enemy !== target);
+      }
+    }
+    s.blinkCooldownMs = marker.cooldownAfterMs || ability.trackedCooldownMs;
+    s.blinkFlash = {
+      fromX: from.x,
+      fromY: from.y,
+      toX: s.player.x + s.player.w / 2,
+      toY: s.player.y + s.player.h / 2,
+      hitX: hitTarget && hitTarget.x,
+      hitY: hitTarget && hitTarget.y,
+      remainingMs: ability.flashMs,
+      totalMs: ability.flashMs,
+    };
+    s.blinkMarker = null;
+    events.push({ type: 'blink-triggered', hit: Boolean(target) });
+  }
+
   function step(state, { dt = 16, input = {}, random = Math.random } = {}) {
     if (state.status !== 'running') return { state, events: [] };
     const s = clone(state),
@@ -191,6 +330,11 @@
     s.doubleMs = Math.max(0, s.doubleMs - ms);
     s.healFlashMs = Math.max(0, s.healFlashMs - ms);
     s.skillCooldownMs = Math.max(0, s.skillCooldownMs - ms);
+    s.blinkCooldownMs = Math.max(0, s.blinkCooldownMs - ms);
+    if (s.blinkFlash) {
+      s.blinkFlash.remainingMs = Math.max(0, s.blinkFlash.remainingMs - ms);
+      if (!s.blinkFlash.remainingMs) s.blinkFlash = null;
+    }
     fighter(s).rules.tick(s, ms);
     if (!s.shieldMs) s.shieldAvailable = false;
     s.player.invincibleMs = Math.max(0, s.player.invincibleMs - ms);
@@ -281,6 +425,8 @@
       }
     }
 
+    tickBlinkMarker(s, ms, events);
+
     const used = new Set(),
       dead = new Set();
     for (let bi = 0; bi < s.bullets.length; bi++) {
@@ -329,6 +475,11 @@
         events,
         inRange: (target) => inShockwaveRange(s, target),
       });
+    }
+    tickBlinkMarker(s, 0, events);
+    if (input.blink) {
+      if (s.blinkMarker) triggerBlink(s, events);
+      else launchBlink(s, random, events);
     }
     for (const b of s.enemyBullets)
       if (hit(b, s.player)) {
@@ -382,6 +533,11 @@
       WINGMEN_DURATION,
       HOMING_DURATION,
       HOMING_TURN_RATE,
+      BLINK_COOLDOWN,
+      BLINK_TRACKED_COOLDOWN,
+      BLINK_EMPTY_COOLDOWN,
+      BLINK_WINDOW,
+      BLINK_DAMAGE,
     },
   };
 });

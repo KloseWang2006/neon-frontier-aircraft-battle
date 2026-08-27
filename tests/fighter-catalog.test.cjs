@@ -21,6 +21,13 @@ test('lists the four selectable fighters with complete visual and skill descript
     assert.equal(typeof fighter.rules.afterVolley, 'function');
   }
   assert.equal(FighterCatalog.get('missing'), undefined);
+  assert.deepEqual(
+    [
+      FighterCatalog.get('yellow').utility.trackedCooldownMs,
+      FighterCatalog.get('yellow').utility.emptyCooldownMs,
+    ],
+    [15000, 10000],
+  );
 });
 
 test('keeps skill visual descriptors separate from the pure ability rules', () => {

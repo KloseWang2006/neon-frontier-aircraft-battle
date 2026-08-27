@@ -129,6 +129,39 @@
       const skillButton = $('#skillButton');
       skillButton.textContent = 'Q · ' + fighter.skillName;
       skillButton.disabled = !skillReady;
+      const blinkCard = $('#blinkCard'),
+        blinkButton = $('#blinkButton'),
+        blinkStatus = $('#blinkStatus'),
+        blinkMarker = state.blinkMarker,
+        blinkAbility = fighter.utility && fighter.utility.kind === 'blink' ? fighter.utility : null;
+      if (blinkCard) blinkCard.hidden = !blinkAbility;
+      if (blinkAbility && blinkButton && blinkStatus) {
+        const remaining = blinkMarker ? (blinkMarker.remainingMs / 1000).toFixed(1) + 's' : '',
+          status = blinkMarker
+            ? blinkMarker.noTarget
+              ? '原地待命 ' + remaining
+              : blinkMarker.locked
+                ? blinkMarker.lost
+                  ? '标记失效 ' + remaining
+                  : '已锁定 ' + remaining
+                : '标记追踪 ' + remaining
+            : state.blinkCooldownMs > 0
+              ? '冷却 ' + (state.blinkCooldownMs / 1000).toFixed(1) + 's'
+              : '可标记';
+        $('#blinkName').textContent = blinkAbility.name;
+        blinkStatus.textContent = status;
+        blinkStatus.className =
+          blinkMarker && blinkMarker.locked
+            ? 'blink-locked'
+            : state.blinkCooldownMs
+              ? 'blink-cooldown'
+              : 'blink-ready';
+        blinkButton.textContent =
+          blinkMarker && blinkMarker.locked ? 'E · 二段瞬闪' : 'E · 瞬闪突袭';
+        blinkButton.disabled =
+          Boolean(blinkMarker && !blinkMarker.locked) ||
+          (!blinkMarker && state.blinkCooldownMs > 0);
+      }
       document.querySelectorAll('[data-fighter]').forEach((button) => {
         const chosen = button.dataset.fighter === state.fighterId;
         button.classList.toggle('selected', chosen);
@@ -267,6 +300,64 @@
       }
       context.restore();
     }
+    function drawBlink(state, fighter) {
+      if (!fighter.utility || fighter.utility.kind !== 'blink') return;
+      const marker = state.blinkMarker,
+        color = fighter.utility.color;
+      if (marker) {
+        const mx = marker.x + marker.w / 2,
+          my = marker.y + marker.h / 2;
+        context.save();
+        context.globalCompositeOperation = 'screen';
+        context.strokeStyle = color;
+        context.fillStyle = color;
+        context.shadowColor = color;
+        context.shadowBlur = 18;
+        context.globalAlpha = marker.locked ? 0.9 : 0.75;
+        context.beginPath();
+        context.moveTo(mx, marker.y);
+        context.lineTo(marker.x + marker.w, marker.y + marker.h);
+        context.lineTo(marker.x, marker.y + marker.h);
+        context.closePath();
+        context.fill();
+        context.globalAlpha = 0.3;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(mx, my, 16 + Math.sin(performance.now() / 90) * 3, 0, Math.PI * 2);
+        context.stroke();
+        if (marker.locked) {
+          context.globalAlpha = 0.8;
+          context.beginPath();
+          context.arc(mx, my, 25, 0, Math.PI * 2);
+          context.stroke();
+        }
+        context.restore();
+      }
+      if (state.blinkFlash) {
+        const flash = state.blinkFlash,
+          t = flash.remainingMs / flash.totalMs;
+        context.save();
+        context.globalCompositeOperation = 'screen';
+        context.globalAlpha = 0.8 * t;
+        context.strokeStyle = color;
+        context.shadowColor = color;
+        context.shadowBlur = 24;
+        context.lineWidth = 4;
+        context.beginPath();
+        context.moveTo(flash.fromX, flash.fromY);
+        context.lineTo(flash.toX, flash.toY);
+        context.stroke();
+        context.beginPath();
+        context.arc(flash.toX, flash.toY, 18 + (1 - t) * 32, 0, Math.PI * 2);
+        context.stroke();
+        if (flash.hitX != null) {
+          context.beginPath();
+          context.arc(flash.hitX, flash.hitY, 12 + (1 - t) * 18, 0, Math.PI * 2);
+          context.stroke();
+        }
+        context.restore();
+      }
+    }
     function drawPlayer(state, fighter) {
       const image = images[fighter.id],
         rotation = fighter.visual.orientation;
@@ -360,6 +451,7 @@
       drawStealth(state, fighter);
       drawWingmen(state, fighter);
       drawHoming(state, fighter);
+      drawBlink(state, fighter);
       if (
         fighter.rules.isInvulnerable(state) ||
         !state.player.invincibleMs ||
@@ -443,6 +535,7 @@
     bind($('#pause'), 'click', () => emit({ type: 'toggle-pause' }));
     bind($('#restart'), 'click', () => emit({ type: 'restart' }));
     bind($('#skillButton'), 'click', () => emit({ type: 'skill' }));
+    bind($('#blinkButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#rankBtn'), 'click', () => {
       localOverlay = 'rank';
       renderModal(current);

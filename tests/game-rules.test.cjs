@@ -382,3 +382,199 @@ test('emits a run-ended event for death and final victory while paused time does
   assert.equal(r.state.status, 'success');
   assert.ok(r.events.some((e) => e.type === 'run-ended' && e.reason === 'victory'));
 });
+
+test('曜金流星瞬闪突袭 selects a safe ordinary target without starting cooldown until second phase', () => {
+  const target = {
+    kind: 'normal',
+    id: 7,
+    x: 200,
+    y: 360,
+    w: 38,
+    h: 38,
+    hp: 1,
+    score: 100,
+    speed: 0,
+  };
+  let r = run(GameRules.create({ fighterId: 'yellow', enemies: [target] }), {
+    dt: 0,
+    input: { blink: true },
+    random: () => 0,
+  });
+  assert.equal(r.state.blinkCooldownMs, 0);
+  assert.equal(r.state.blinkMarker.targetId, 7);
+  assert.equal(r.state.blinkMarker.locked, false);
+  assert.equal(r.state.blinkMarker.remainingMs, 5000);
+  assert.equal(r.state.score, 0);
+  r = run(r.state, { dt: 400 });
+  assert.equal(r.state.blinkMarker.locked, true);
+  r = run(r.state, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.blinkCooldownMs, 15000);
+});
+
+test('瞬闪突袭 ignores unsafe or boss-only targets and cannot second-trigger while flying', () => {
+  let s = GameRules.create({
+    fighterId: 'yellow',
+    enemies: [{ kind: 'normal', id: 1, x: 200, y: 200, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
+  });
+  let r = run(s, { dt: 0, input: { blink: true }, random: () => 0 });
+  assert.equal(r.state.blinkMarker.noTarget, true);
+  assert.equal(r.state.blinkMarker.locked, true);
+  assert.equal(r.state.blinkCooldownMs, 0);
+  r = run(r.state, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.blinkMarker, null);
+  assert.equal(r.state.blinkCooldownMs, 10000);
+  s = GameRules.create({
+    fighterId: 'yellow',
+    blinkCooldownMs: 1000,
+    blinkMarker: {
+      x: 1,
+      y: 2,
+      w: 10,
+      h: 14,
+      locked: false,
+      lost: false,
+      targetId: 1,
+      remainingMs: 4000,
+    },
+    enemies: [{ kind: 'normal', id: 1, x: 200, y: 360, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
+  });
+  r = run(s, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.blinkMarker.locked, false);
+  s = GameRules.create({
+    fighterId: 'azure',
+    enemies: [{ kind: 'normal', id: 1, x: 200, y: 360, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
+  });
+  assert.equal(run(s, { dt: 0, input: { blink: true } }).state.blinkMarker, null);
+});
+
+test('瞬闪二段在锁定后瞬移并造成三点伤害，只获得击杀分数', () => {
+  const target = {
+    kind: 'normal',
+    id: 9,
+    x: 200,
+    y: 360,
+    w: 38,
+    h: 38,
+    hp: 3,
+    score: 100,
+    speed: 0,
+  };
+  const s = GameRules.create({
+    fighterId: 'yellow',
+    blinkCooldownMs: 9000,
+    blinkMarker: {
+      x: 214,
+      y: 410,
+      w: 10,
+      h: 14,
+      locked: true,
+      lost: false,
+      targetId: 9,
+      remainingMs: 4000,
+    },
+    enemies: [target],
+    skillCharge: 20,
+  });
+  const r = run(s, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.blinkMarker, null);
+  assert.equal(r.state.enemies.length, 0);
+  assert.equal(r.state.score, 100);
+  assert.equal(r.state.skillCharge, 20);
+  assert.equal(r.state.player.y, 410);
+  assert.ok(r.events.some((event) => event.type === 'blink-triggered' && event.hit));
+});
+
+test('目标先被击毁后，瞬闪仍可无伤位移；标记五秒过期且暂停冻结', () => {
+  let s = GameRules.create({
+    fighterId: 'yellow',
+    blinkCooldownMs: 10000,
+    blinkMarker: {
+      x: 214,
+      y: 410,
+      w: 10,
+      h: 14,
+      locked: true,
+      lost: false,
+      targetId: 99,
+      remainingMs: 4000,
+    },
+    skillCharge: 8,
+  });
+  let r = run(s, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.score, 0);
+  assert.equal(r.state.skillCharge, 8);
+  assert.equal(r.state.player.y, 410);
+  assert.equal(r.state.blinkCooldownMs, 15000);
+  s = GameRules.create({
+    fighterId: 'yellow',
+    status: 'paused',
+    blinkCooldownMs: 10000,
+    blinkMarker: {
+      x: 1,
+      y: 2,
+      w: 10,
+      h: 14,
+      locked: true,
+      lost: false,
+      targetId: null,
+      remainingMs: 4000,
+    },
+  });
+  r = run(s, { dt: 6000 });
+  assert.equal(r.state.blinkCooldownMs, 10000);
+  assert.equal(r.state.blinkMarker.remainingMs, 4000);
+  s = GameRules.create({
+    fighterId: 'yellow',
+    blinkMarker: {
+      x: 1,
+      y: 2,
+      w: 10,
+      h: 14,
+      locked: false,
+      lost: false,
+      targetId: null,
+      remainingMs: 1,
+    },
+  });
+  assert.equal(run(s, { dt: 16 }).state.blinkMarker, null);
+});
+
+test('无目标标记过期不会消耗冷却，且暂停冻结原地标记', () => {
+  let s = GameRules.create({
+    fighterId: 'yellow',
+    blinkMarker: {
+      x: 235,
+      y: 616,
+      w: 10,
+      h: 14,
+      targetId: null,
+      locked: true,
+      lost: false,
+      noTarget: true,
+      remainingMs: 4000,
+      cooldownAfterMs: 10000,
+    },
+  });
+  let r = run(s, { dt: 2000 });
+  assert.equal(r.state.blinkMarker.remainingMs, 2000);
+  assert.equal(r.state.blinkCooldownMs, 0);
+  s = GameRules.create({
+    fighterId: 'yellow',
+    status: 'paused',
+    blinkMarker: {
+      x: 235,
+      y: 616,
+      w: 10,
+      h: 14,
+      targetId: null,
+      locked: true,
+      lost: false,
+      noTarget: true,
+      remainingMs: 4000,
+      cooldownAfterMs: 10000,
+    },
+  });
+  r = run(s, { dt: 5000 });
+  assert.equal(r.state.blinkMarker.remainingMs, 4000);
+  assert.equal(r.state.blinkCooldownMs, 0);
+});

@@ -10,6 +10,13 @@
     wingmenDuration: 8000,
     homingDuration: 5000,
     homingTurnRate: 4.8,
+    blinkCooldown: 10000,
+    blinkTrackedCooldown: 15000,
+    blinkEmptyCooldown: 10000,
+    blinkWindow: 5000,
+    blinkMarkerSpeed: 820,
+    blinkDamage: 3,
+    blinkFlash: 460,
   });
   const noOp = () => {};
   const noShotDecoration = () => {};
@@ -84,6 +91,7 @@
       ...data,
       selection: Object.freeze({ ...data.selection }),
       visual: Object.freeze({ ...data.visual, effect: Object.freeze({ ...data.visual.effect }) }),
+      utility: data.utility && Object.freeze({ ...data.utility }),
       rules: data.rules,
     });
   }
@@ -185,6 +193,19 @@
         activeState: 'homingMs',
         activeLabel: '追猎中',
         statusClass: 'homing-active',
+      },
+      utility: {
+        kind: 'blink',
+        name: '瞬闪突袭',
+        key: 'E',
+        cooldownMs: constants.blinkCooldown,
+        trackedCooldownMs: constants.blinkTrackedCooldown,
+        emptyCooldownMs: constants.blinkEmptyCooldown,
+        windowMs: constants.blinkWindow,
+        markerSpeed: constants.blinkMarkerSpeed,
+        damage: constants.blinkDamage,
+        flashMs: constants.blinkFlash,
+        color: '#ffe85b',
       },
       rules: homingRules,
     }),
