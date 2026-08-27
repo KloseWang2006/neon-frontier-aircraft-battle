@@ -1,7 +1,83 @@
-const assert=require('node:assert/strict'),test=require('node:test');
-const Rules=require('../game-rules.js'),Storage=require('../game-storage.js'),Session=require('../run-session.js');
-const make=()=>Session.create({rules:Rules,storage:Storage.adapter(Storage.memory())});
-test('starts, pauses without advancing, and restarts',()=>{let s=make();assert.equal(s.view.overlay,'ready');s=Session.start(s);assert.equal(s.game.status,'running');s=Session.advance(s,{dt:1000});const t=s.game.elapsedMs;s=Session.togglePause(s);s=Session.advance(s,{dt:1000});assert.equal(s.game.elapsedMs,t);s=Session.restart(s);assert.equal(s.view.overlay,null);assert.equal(s.game.score,0)});
-test('selects a fighter only while ready and keeps it on restart',()=>{let s=make();s=Session.selectFighter(s,'silver');assert.equal(s.game.fighterId,'silver');s=Session.start(s);s=Session.selectFighter(s,'azure');assert.equal(s.game.fighterId,'silver');s=Session.restart(s);assert.equal(s.game.fighterId,'silver')});
-test('shows a short ranking-unlocked notice after Boss 1',()=>{let s=make();s=Session.start(s);s.game=Rules.create({score:10000,boss:{stage:1,trigger:10000,x:160,y:70,w:160,h:120,hp:1,maxHp:1,attackClock:0,pattern:0,phase:0},bullets:[{x:200,y:100,w:8,h:17,vx:0,vy:0}]});s=Session.advance(s,{dt:0});assert.equal(s.game.rankEligible,true);assert.equal(s.view.notice,'已解锁上榜资格');s=Session.advance(s,{dt:2000});assert.equal(s.view.notice,null)});
-test('only eligible ended runs request ID and registering saves then restarts',()=>{let s=make();s=Session.start(s);s.game=Rules.create({player:{x:210,y:630,lives:1},enemyBullets:[{x:235,y:650,w:8,h:14,vx:0,vy:0}]});s=Session.advance(s);assert.equal(s.view.overlay,'ended');assert.equal(s.view.canRegister,false);s=make();s=Session.start(s);s.game=Rules.create({rankEligible:true,triggered:[10000],score:12000,elapsedMs:9000,player:{x:210,y:630,lives:1},enemyBullets:[{x:235,y:650,w:8,h:14,vx:0,vy:0}]});s=Session.advance(s);assert.equal(s.view.canRegister,true);s=Session.register(s,'ace');assert.equal(s.board[0].id,'ace');assert.equal(s.view.overlay,null);assert.equal(s.game.score,0)});
+const assert = require('node:assert/strict'),
+  test = require('node:test');
+const Rules = require('../game-rules.js'),
+  Storage = require('../game-storage.js'),
+  Session = require('../run-session.js');
+const make = () => Session.create({ rules: Rules, storage: Storage.adapter(Storage.memory()) });
+test('starts, pauses without advancing, and restarts', () => {
+  let s = make();
+  assert.equal(s.view.overlay, 'ready');
+  s = Session.start(s);
+  assert.equal(s.game.status, 'running');
+  s = Session.advance(s, { dt: 1000 });
+  const t = s.game.elapsedMs;
+  s = Session.togglePause(s);
+  s = Session.advance(s, { dt: 1000 });
+  assert.equal(s.game.elapsedMs, t);
+  s = Session.restart(s);
+  assert.equal(s.view.overlay, null);
+  assert.equal(s.game.score, 0);
+});
+test('selects a fighter only while ready and keeps it on restart', () => {
+  let s = make();
+  s = Session.selectFighter(s, 'silver');
+  assert.equal(s.game.fighterId, 'silver');
+  s = Session.start(s);
+  s = Session.selectFighter(s, 'azure');
+  assert.equal(s.game.fighterId, 'silver');
+  s = Session.restart(s);
+  assert.equal(s.game.fighterId, 'silver');
+});
+test('shows a short ranking-unlocked notice after Boss 1', () => {
+  let s = make();
+  s = Session.start(s);
+  s.game = Rules.create({
+    score: 10000,
+    boss: {
+      stage: 1,
+      trigger: 10000,
+      x: 160,
+      y: 70,
+      w: 160,
+      h: 120,
+      hp: 1,
+      maxHp: 1,
+      attackClock: 0,
+      pattern: 0,
+      phase: 0,
+    },
+    bullets: [{ x: 200, y: 100, w: 8, h: 17, vx: 0, vy: 0 }],
+  });
+  s = Session.advance(s, { dt: 0 });
+  assert.equal(s.game.rankEligible, true);
+  assert.equal(s.view.notice, '已解锁上榜资格');
+  s = Session.advance(s, { dt: 2000 });
+  assert.equal(s.view.notice, null);
+});
+test('only eligible ended runs request ID and registering saves then restarts', () => {
+  let s = make();
+  s = Session.start(s);
+  s.game = Rules.create({
+    player: { x: 210, y: 630, lives: 1 },
+    enemyBullets: [{ x: 235, y: 650, w: 8, h: 14, vx: 0, vy: 0 }],
+  });
+  s = Session.advance(s);
+  assert.equal(s.view.overlay, 'ended');
+  assert.equal(s.view.canRegister, false);
+  s = make();
+  s = Session.start(s);
+  s.game = Rules.create({
+    rankEligible: true,
+    triggered: [10000],
+    score: 12000,
+    elapsedMs: 9000,
+    player: { x: 210, y: 630, lives: 1 },
+    enemyBullets: [{ x: 235, y: 650, w: 8, h: 14, vx: 0, vy: 0 }],
+  });
+  s = Session.advance(s);
+  assert.equal(s.view.canRegister, true);
+  s = Session.register(s, 'ace');
+  assert.equal(s.board[0].id, 'ace');
+  assert.equal(s.view.overlay, null);
+  assert.equal(s.game.score, 0);
+});

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>霓虹防线 · 飞机大战｜未来优化路线</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #eef2ff;
+      --muted: #aeb9df;
+      --cyan: #58e7ff;
+      --pink: #f35bd8;
+      --gold: #ffc75a;
+      --panel: #10133de8;
+      --line: #7189df66;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: radial-gradient(circle at 20% 0, #292568 0, transparent 34%), #05061a;
+      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    main {
+      width: min(980px, calc(100% - 32px));
+      margin: auto;
+      padding: 44px 0 72px;
+    }
+    header {
+      padding: 30px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(135deg, #101b52, var(--panel));
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--cyan);
+      letter-spacing: 0.16em;
+      font-weight: 800;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 52px);
+    }
+    h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+    p,
+    li {
+      color: var(--muted);
+      line-height: 1.75;
+    }
+    .meta {
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .card {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+    }
+    .card.active {
+      border-color: var(--cyan);
+      box-shadow: 0 0 24px #58e7ff22;
+    }
+    .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      background: #183a68;
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .later .tag {
+      background: #302050;
+      color: #cda6ff;
+    }
+    .wide {
+      grid-column: 1 / -1;
+    }
+    code {
+      color: #d9f9ff;
+      font-family: Menlo, monospace;
+    }
+    a {
+      color: var(--cyan);
+    }
+    footer {
+      margin-top: 28px;
+      color: #7f8ab8;
+      font-size: 13px;
+    }
+    @media (max-width: 680px) {
+      main {
+        padding-top: 18px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .wide {
+        grid-column: auto;
+      }
+    }
+  </style>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">NEON FRONTIER · ROADMAP</p>
+        <h1>霓虹防线 · 飞机大战<br />未来优化路线</h1>
+        <p class="meta">产品定位已确认：十万分终局的 Boss 战役</p>
+        <p>
+          游戏保持离线可玩与本地成绩兼容；后续优先增强可维护性、战役深度和发布质量，而非快速堆叠更多战机。
+        </p>
+      </header>
+
+      <section class="grid" aria-label="优化路线">
+        <article class="card active wide">
+          <span class="tag">P0 · 当前执行</span>
+          <h2>工程健康与质量门禁</h2>
+          <ul>
+            <li>格式化源代码，维持游戏规则、战机能力与本地存档不变。</li>
+            <li>建立 <code>npm run check</code>：格式、语法、规则测试与真实 Chromium 回归。</li>
+            <li>GitHub Actions 在推送与 Pull Request 时执行检查；失败时保存浏览器诊断截图。</li>
+            <li>保留两支成片 MP4，取消可再生成 QA 截图的版本追踪。</li>
+          </ul>
+        </article>
+        <article class="card later">
+          <span class="tag">P1</span>
+          <h2>战斗时间线</h2>
+          <p>
+            在既有 <code>GameRules.create/step</code> Interface 内部深化战斗时间线
+            Module，集中移动、AI、碰撞、掉落与技能结算顺序。
+          </p>
+        </article>
+        <article class="card later">
+          <span class="tag">P2</span>
+          <h2>Boss 战役章节化</h2>
+          <p>为四道防线增加进场、攻击前摇、阶段转换、专属弹幕与结算演出，让压力清晰且可学习。</p>
+        </article>
+        <article class="card later">
+          <span class="tag">P3</span>
+          <h2>平衡与重复游玩</h2>
+          <p>将敌机权重、Boss 参数和道具概率配置化，补充固定种子挑战与本地匿名对局摘要。</p>
+        </article>
+        <article class="card later">
+          <span class="tag">P4</span>
+          <h2>产品体验</h2>
+          <p>增加新手教学、Boss 攻击图例、移动端安全区、低特效与色弱辅助，并评估 PWA 安装能力。</p>
+        </article>
+        <article class="card later wide">
+          <span class="tag">P5</span>
+          <h2>共享排行榜（独立项目）</h2>
+          <p>
+            如需跨设备互通，采用 Cloudflare Workers + D1 作为成绩存储
+            Adapter，并引入昵称、限流与客户端成绩校验；当前 localStorage 榜单继续保留。
+          </p>
+        </article>
+      </section>
+
+      <footer>
+        资料版本：2026-08-25 · 双击本文件即可离线查看 · 相关说明见 <a href="README.md">README.md</a>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -44,3 +44,9 @@ npx remotion render src/index.ts NeonFrontierPromo out/霓虹防线-飞机大战
 ```bash
 npx remotion render src/index.ts NeonFrontierPromo30s out/霓虹防线-飞机大战-30秒宣传片.mp4 --browser-executable "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --concurrency 1
 ```
+
+## 构建产物约定
+
+- 仓库保留 8 秒与 30 秒两支正式成片，便于直接观看和项目展示。
+- `ink-press/out/qa*/` 下的截图是可再生成的质量检查产物，不纳入 Git；渲染或验收时可在本地保留。
+- `ink-press/node_modules/` 和 Remotion 缓存仅用于本地构建，不纳入 Git。

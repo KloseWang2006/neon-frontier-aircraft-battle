@@ -1,5 +1,38 @@
-const assert=require('node:assert/strict'),test=require('node:test');
-const Storage=require('../game-storage.js');
-test('keeps valid legacy records and ignores malformed records',()=>{const store=Storage.memory({'aircraft-battle-clear-rank-v1':JSON.stringify([{id:'ace',score:12000,time:1000},{id:'bad',time:1},null])});assert.deepEqual(Storage.loadBoard(store),[{id:'ace',score:12000,time:1000}])});
-test('sorts by score then time and keeps ten records',()=>{const store=Storage.memory();const entries=Array.from({length:12},(_,i)=>({id:String(i),score:i<2?100:1000+i,time:200-i}));const board=Storage.saveBoard(store,entries);assert.equal(board.length,10);assert.equal(board[0].score,1011);assert.deepEqual(Storage.saveBoard(store,[{id:'slow',score:5,time:9},{id:'fast',score:5,time:3}]).map(x=>x.id),['fast','slow'])});
-test('keeps the existing high-score key and ignores invalid values',()=>{const store=Storage.memory({'aircraft-battle-high-score-v1':'2400'});assert.equal(Storage.loadHigh(store),2400);assert.equal(Storage.saveHigh(store,1200),2400);assert.equal(Storage.saveHigh(store,3600),3600);assert.equal(Storage.loadHigh(Storage.memory({'aircraft-battle-high-score-v1':'broken'})),0)});
+const assert = require('node:assert/strict'),
+  test = require('node:test');
+const Storage = require('../game-storage.js');
+test('keeps valid legacy records and ignores malformed records', () => {
+  const store = Storage.memory({
+    'aircraft-battle-clear-rank-v1': JSON.stringify([
+      { id: 'ace', score: 12000, time: 1000 },
+      { id: 'bad', time: 1 },
+      null,
+    ]),
+  });
+  assert.deepEqual(Storage.loadBoard(store), [{ id: 'ace', score: 12000, time: 1000 }]);
+});
+test('sorts by score then time and keeps ten records', () => {
+  const store = Storage.memory();
+  const entries = Array.from({ length: 12 }, (_, i) => ({
+    id: String(i),
+    score: i < 2 ? 100 : 1000 + i,
+    time: 200 - i,
+  }));
+  const board = Storage.saveBoard(store, entries);
+  assert.equal(board.length, 10);
+  assert.equal(board[0].score, 1011);
+  assert.deepEqual(
+    Storage.saveBoard(store, [
+      { id: 'slow', score: 5, time: 9 },
+      { id: 'fast', score: 5, time: 3 },
+    ]).map((x) => x.id),
+    ['fast', 'slow'],
+  );
+});
+test('keeps the existing high-score key and ignores invalid values', () => {
+  const store = Storage.memory({ 'aircraft-battle-high-score-v1': '2400' });
+  assert.equal(Storage.loadHigh(store), 2400);
+  assert.equal(Storage.saveHigh(store, 1200), 2400);
+  assert.equal(Storage.saveHigh(store, 3600), 3600);
+  assert.equal(Storage.loadHigh(Storage.memory({ 'aircraft-battle-high-score-v1': 'broken' })), 0);
+});
