@@ -381,6 +381,66 @@
     .shadow-strike-cooldown {
       color: #9dc9ac;
     }
+    .guide-btn:disabled {
+      opacity: 0.48;
+      border-color: #536080;
+      color: #8893b3;
+      cursor: not-allowed;
+    }
+    .guide-btn {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .sound-btn {
+      width: 100%;
+      margin-top: 8px;
+      border-color: #b99bff;
+      color: #e4d9ff;
+    }
+    .sound-btn.sound-off {
+      border-color: #59607c;
+      color: #9aa2bd;
+    }
+    .modal.guide-modal {
+      width: min(390px, 94%);
+      max-height: 88%;
+      overflow-y: auto;
+      text-align: left;
+      scrollbar-color: #58e7ff #07102d;
+    }
+    .guide-modal h2,
+    .guide-modal h3 {
+      text-align: center;
+    }
+    .guide-modal h3 {
+      margin: 22px 0 8px;
+      color: #72f1ff;
+      font-size: 16px;
+    }
+    .guide-modal p,
+    .guide-modal li {
+      color: #d8e1ff;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .guide-modal ul {
+      margin: 7px 0;
+      padding-left: 20px;
+    }
+    .guide-fighter {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--guide-color, #58e7ff);
+      border-radius: 10px;
+      background: #07102d99;
+    }
+    .guide-fighter h4 {
+      margin: 0 0 5px;
+      color: var(--guide-color, #58e7ff);
+    }
+    .guide-fighter p {
+      margin: 5px 0;
+    }
   </style>
   <style>
     .page {
@@ -479,6 +539,8 @@
               <button class="btn main" id="pause">暂停</button
               ><button class="btn" id="restart">重新开始</button>
             </div>
+            <button class="btn guide-btn" id="guideBtn" title="请先暂停再查看说明">游戏说明</button>
+            <button class="btn sound-btn" id="soundBtn">🔊 音效：开</button>
           </section>
           <section class="card">
             移动与射击
@@ -494,6 +556,7 @@
     <script src="game-rules.js"></script>
     <script src="game-storage.js"></script>
     <script src="run-session.js"></script>
+    <script src="game-audio.js"></script>
     <script src="page-presentation.js"></script>
     <script>
       const canvas = document.querySelector('#game'),
@@ -501,6 +564,7 @@
         storage = GameStorage.adapter(localStorage);
       let session = RunSession.create({ rules: GameRules, storage }),
         last = 0;
+      const audio = GameAudio.create({ storage: localStorage });
       const presentation = PagePresentation.create({
         document,
         canvas,
@@ -512,14 +576,28 @@
         view: session.view,
         best: session.best,
         board: session.board,
+        soundEnabled: audio.isEnabled(),
       });
       function render() {
         presentation.render(snapshot());
       }
       function dispatch(intent) {
+        audio.unlock();
+        const wasStatus = session.game.status;
         if (intent.type === 'start') session = RunSession.start(session);
         if (intent.type === 'restart') session = RunSession.restart(session);
-        if (intent.type === 'toggle-pause') session = RunSession.togglePause(session);
+        if (intent.type === 'toggle-pause') {
+          session = RunSession.togglePause(session);
+          if (wasStatus === 'running') audio.play('pause');
+          if (wasStatus === 'paused') audio.play('resume');
+        }
+        if (intent.type === 'toggle-sound') {
+          const enabled = audio.toggle();
+          if (enabled) {
+            audio.unlock();
+            audio.play('resume');
+          }
+        }
         if (intent.type === 'select-fighter')
           session = RunSession.selectFighter(session, intent.fighterId);
         if (intent.type === 'skill' && session.game.status === 'running') keys.skill = true;
@@ -543,6 +621,7 @@
         S: 'down',
       };
       document.addEventListener('keydown', (event) => {
+        audio.unlock();
         if (event.key === 'q' || event.key === 'Q') {
           if (!event.repeat) dispatch({ type: 'skill' });
           event.preventDefault();
@@ -571,6 +650,7 @@
         last = now;
         if (session.game.status === 'running') {
           session = RunSession.advance(session, { dt, input: keys, random: Math.random });
+          audio.consume(session.events);
           keys.skill = false;
           keys.blink = false;
         }
@@ -578,6 +658,7 @@
       }
       render();
       requestAnimationFrame(loop);
+      window.addEventListener('beforeunload', () => audio.destroy());
     </script>
   </body>
 </html>

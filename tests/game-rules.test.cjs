@@ -259,6 +259,28 @@ test('consumes an enemy bullet once on collision', () => {
   assert.equal(s.player.lives, 2);
   assert.equal(s.enemyBullets.length, 0);
 });
+test('emits one-frame audio events for volleys, kills, damage, and powerups', () => {
+  const r = run(
+    GameRules.create({
+      fireClock: 180,
+      player: { x: 210, y: 630, lives: 2 },
+      bullets: [{ x: 200, y: 190, w: 8, h: 17, vx: 0, vy: 0 }],
+      enemies: [{ kind: 'normal', x: 190, y: 180, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
+      enemyBullets: [{ x: 235, y: 650, w: 8, h: 14, vx: 0, vy: 0 }],
+      powerups: [{ kind: 'heal', x: 220, y: 635, w: 28, h: 28, vy: 100 }],
+    }),
+    { dt: 0 },
+  );
+  const types = r.events.map((event) => event.type);
+  for (const type of [
+    'player-volley',
+    'enemy-destroyed',
+    'player-hit',
+    'powerup-collected',
+    'life-restored',
+  ])
+    assert.ok(types.includes(type));
+});
 test('spawns all three enemy kinds from deterministic rolls', () => {
   for (const [roll, kind] of [
     [0.2, 'normal'],

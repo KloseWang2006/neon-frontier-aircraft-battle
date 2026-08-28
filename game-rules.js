@@ -186,27 +186,30 @@
     return { ...bullet, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed };
   }
 
-  function playerShot(s) {
+  function playerShot(s, events) {
     const rate = s.doubleMs > 0 ? 90 : 180;
     s.fireClock += s._dt;
     while (s.fireClock >= rate) {
       s.fireClock -= rate;
       addShot(s, { x: s.player.x + 26, y: s.player.y - 9 });
       fighter(s).rules.afterVolley({ state: s, addShot: (shot) => addShot(s, shot) });
+      events.push({ type: 'player-volley' });
     }
   }
 
-  function hurt(s) {
+  function hurt(s, events) {
     if (s.player.invincibleMs > 0 || fighter(s).rules.isInvulnerable(s)) return;
     if (s.shieldAvailable) {
       s.shieldAvailable = false;
       s.shieldMs = 0;
       s.shieldSkillMs = 0;
       s.shieldSkillArmed = false;
+      events.push({ type: 'shield-blocked' });
       return;
     }
     s.player.lives--;
     s.player.invincibleMs = 750;
+    events.push({ type: 'player-hit' });
     if (s.player.lives <= 0) s.status = 'over';
   }
 
@@ -294,6 +297,7 @@
     if (targetKind === 'enemy' && target.hp <= 0) {
       s.score += target.score;
       s.enemies = s.enemies.filter((enemy) => enemy !== target);
+      events.push({ type: 'enemy-destroyed', kind: target.kind, source: 'shadow-strike' });
     }
     if (targetKind === 'boss' && target.hp <= 0 && !deferBossDefeat) defeatBoss(s, events, target);
   }
@@ -485,6 +489,7 @@
       if (target.hp <= 0) {
         s.score += target.score;
         s.enemies = s.enemies.filter((enemy) => enemy !== target);
+        events.push({ type: 'enemy-destroyed', kind: target.kind, source: 'blink' });
       }
     } else if (assault && target && targetKind === 'boss') {
       target.hp -= ability.damage;
@@ -541,7 +546,7 @@
       dy = (((input.up ? -1 : 0) + (input.down ? 1 : 0)) * fighter(s).speed * ms) / 1000;
     s.player.x = Math.max(0, Math.min(W - s.player.w, s.player.x + dx));
     s.player.y = Math.max(TOP, Math.min(H - s.player.h, s.player.y + dy));
-    playerShot(s);
+    playerShot(s, events);
     s.bullets = s.bullets
       .map((b) => {
         const steered = steerHomingBullet(s, b, ms);
@@ -605,6 +610,7 @@
             vx: (s.player.x + 30 - cx) * 0.28,
             vy: 235,
           });
+          events.push({ type: 'enemy-volley' });
         }
       }
     } else {
@@ -625,6 +631,7 @@
             vx: (i - (n - 1) / 2) * 55,
             vy: 230 + b.stage * 12,
           });
+        events.push({ type: 'boss-volley', stage: b.stage });
       }
     }
 
@@ -652,6 +659,7 @@
           dead.add(ei);
           s.score += e.score;
           chargeSkill(s, e.kind);
+          events.push({ type: 'enemy-destroyed', kind: e.kind, source: 'bullet' });
           const r = random();
           if (r < 0.1)
             s.powerups.push({ kind: powerupKind(r), x: e.x, y: e.y, w: 28, h: 28, vy: 100 });
@@ -680,13 +688,13 @@
     }
     for (const b of s.enemyBullets)
       if (hit(b, s.player)) {
-        hurt(s);
+        hurt(s, events);
         b.consumed = true;
       }
     s.enemyBullets = s.enemyBullets.filter((b) => !b.consumed);
     for (const e of s.enemies)
       if (hit(e, s.player)) {
-        hurt(s);
+        hurt(s, events);
         e.y = 999;
       }
     s.enemies = s.enemies.filter((e) => e.y < H + 65);
@@ -695,6 +703,7 @@
       .filter((p) => p.y < H + 30);
     for (const p of s.powerups)
       if (hit(p, s.player)) {
+        events.push({ type: 'powerup-collected', kind: p.kind });
         if (p.kind === 'shield') {
           s.shieldMs = 8000;
           s.shieldAvailable = true;

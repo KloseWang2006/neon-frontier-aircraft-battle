@@ -6,6 +6,7 @@ const sources = [
   'game-rules.js',
   'game-storage.js',
   'run-session.js',
+  'game-audio.js',
   'page-presentation.js',
 ];
 

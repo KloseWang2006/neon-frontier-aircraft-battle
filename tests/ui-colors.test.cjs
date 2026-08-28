@@ -62,6 +62,12 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
     true,
   );
   assert.match(compactPage, /id="skillButton"/);
+  assert.match(compactPage, /id="guideBtn"/);
+  assert.match(compactPage, /id="soundBtn"/);
+  assert.match(compactPage, /<script src="game-audio\.js"><\/script>/);
+  assert.match(compactPage, /\.sound-btn\s*\{[^}]*width:\s*100%/);
+  assert.match(compactPresentation, /functionguideMarkup\(\)/);
+  assert.match(compactPresentation, /localOverlay==='guide'/);
   assert.match(compactPresentation, /skillCharge/);
   assert.match(compactPresentation, /skillCooldownMs/);
   assert.match(compactPage, /event\.key === 'q' \|\| event\.key === 'Q'/);
@@ -96,6 +102,7 @@ test('uses a desktop action column for fighter selection, run controls, and move
       compactPage.indexOf('class="side action-side"'),
   );
   assert.ok(compactPage.indexOf('class="side action-side"') < compactPage.indexOf('移动与射击'));
+  assert.match(compactPage, /\.guide-btn\s*\{[^}]*width:\s*100%[^}]*margin-top:\s*8px/);
 });
 
 test('stacks the score-registration form and restart action in the end modal', () => {

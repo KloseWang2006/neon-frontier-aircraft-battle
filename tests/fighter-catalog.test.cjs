@@ -16,6 +16,9 @@ test('lists the four selectable fighters with complete visual and skill descript
     assert.ok(fighter.selection.description);
     assert.match(fighter.visual.spriteFile, /^player-.*\.png$/);
     assert.ok(fighter.skillName);
+    assert.ok(fighter.guide);
+    assert.ok(fighter.guide.q.length);
+    assert.ok(fighter.guide.e.length);
     assert.equal(typeof fighter.rules.activate, 'function');
     assert.equal(typeof fighter.rules.tick, 'function');
     assert.equal(typeof fighter.rules.afterVolley, 'function');
@@ -70,4 +73,5 @@ test('keeps skill visual descriptors separate from the pure ability rules', () =
     color: '#ffe85b',
   });
   assert.equal(FighterCatalog.constants.homingDuration, 5000);
+  assert.match(FighterCatalog.get('green').guide.e.join(' '), /影分身/);
 });

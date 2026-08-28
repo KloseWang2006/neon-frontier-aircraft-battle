@@ -8,7 +8,10 @@
 2. 在右侧预选“蔚蓝风暴”“银翼杀手”“青岚影忍”或“曜金流星”，再在开始弹窗点击“启动战机”。
 3. 击败敌机、收集强化包，并突破四道 Boss 防线。
 
+主界面右侧的“游戏说明”按钮会打开完整的规则与战机图鉴。它仅在准备阶段或已暂停时可用；关闭后会保持原先的准备或暂停状态。
+
 游戏完全使用本地 HTML、CSS、JavaScript 和图片资源，不依赖服务器或第三方库。
+音效由浏览器 Web Audio API 实时合成，无需下载音频文件或联网；首次点击/按键后生效，可在右侧“音效：开/关”按钮静音。
 
 项目的后续优化路线见可离线打开的 [未来优化路线.html](未来优化路线.html)。
 
@@ -21,6 +24,7 @@
 | 左移 / 右移          | `←` / `→` 或 `A` / `D` | 按住左右方向键         |
 | 前进 / 后退          | `↑` / `↓` 或 `W` / `S` | 按住上下方向键         |
 | 暂停 / 继续          | `Space`                | 点击“暂停 / 继续”      |
+| 音效开关             | —                      | 点击右侧“音效：开/关”  |
 | 充能技               | `Q`                    | 点击右侧对应的技能按钮 |
 | 普通技               | `E`                    | 点击右侧对应的技能按钮 |
 | 潮涌屏障（蔚蓝风暴） | `E`                    | 点击“E · 潮涌屏障”按钮 |
@@ -82,13 +86,15 @@ Boss 会在战场上方横移，并交替使用扇形与三连弹幕。击败 10
 ├── game-rules.js          # 纯游戏规则 module：状态推进与本帧事件
 ├── run-session.js         # 运行生命周期 module：弹窗、资格与登记流程
 ├── game-storage.js        # 本地成绩存储 adapter：最高分与排行榜
+├── game-audio.js          # 离线合成音效 module：Web Audio、静音与节流
 ├── CONTEXT.md             # 项目术语
 ├── README.md             # 本说明
 ├── tests/
 │   ├── fighter-catalog.test.cjs # 战机目录测试
 │   ├── game-rules.test.cjs  # 可重复运行的规则测试
 │   ├── run-session.test.cjs # 生命周期测试
-│   └── game-storage.test.cjs # 本地存储测试
+│   ├── game-storage.test.cjs # 本地存储测试
+│   ├── game-audio.test.cjs # 假 AudioContext 音效测试
 │   └── page-presentation.test.cjs # 假 DOM/Canvas 呈现测试
 └── assets/
     ├── player-ship.png
@@ -110,6 +116,7 @@ Boss 会在战场上方横移，并交替使用扇形与三连弹幕。击败 10
 
 - `aircraft-battle-high-score-v1`：最高分。
 - `aircraft-battle-clear-rank-v1`：通关排行榜。
+- `aircraft-battle-sound-enabled-v1`：音效开关偏好（默认开启）。
 
 ## 开发验证
 

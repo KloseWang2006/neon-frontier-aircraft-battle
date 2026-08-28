@@ -98,6 +98,12 @@
       selection: Object.freeze({ ...data.selection }),
       visual: Object.freeze({ ...data.visual, effect: Object.freeze({ ...data.visual.effect }) }),
       utility: data.utility && Object.freeze({ ...data.utility }),
+      guide:
+        data.guide &&
+        Object.freeze({
+          q: Object.freeze([...data.guide.q]),
+          e: Object.freeze([...data.guide.e]),
+        }),
       rules: data.rules,
     });
   }
@@ -134,6 +140,17 @@
         cooldownMs: constants.shieldSkillCooldown,
         reductionMs: constants.shieldSkillReduction,
         color: '#57eaff',
+      },
+      guide: {
+        q: [
+          '充满 100 能量且 18 秒冷却结束后释放。',
+          '清除半径 300 内的普通敌机与敌方子弹（含 Boss 子弹），不会伤害 Boss。',
+          '清除获得原分数，但不掉强化包、不为下一次 Q 充能。',
+        ],
+        e: [
+          '立即获得 5 秒护盾，基础冷却 30 秒，不消耗 Q 能量。',
+          '护盾抵挡一次敌弹或撞机后立即消失；若自然结束且未触发，剩余冷却额外减少 5 秒。',
+        ],
       },
     }),
     silver: fighter({
@@ -172,6 +189,17 @@
         flashMs: constants.blinkFlash,
         color: '#d9eeff',
       },
+      guide: {
+        q: [
+          '充满 100 能量且 18 秒冷却结束后释放，获得 3 秒隐匿无敌。',
+          '敌弹命中仍会消失；自动射击、敌人攻击与 Boss 战照常进行。',
+        ],
+        e: [
+          '发射定位标记锁定最近的普通、快速或精英敌机；场上没有三类敌机时才锁定 Boss。',
+          '标记目标暂时免疫玩家伤害；普通目标进入活动区后可二段瞬移并造成 3 点伤害。',
+          'Boss 二段只造成 3 点伤害、不传送；二段后冷却 15 秒，无目标不进入冷却。',
+        ],
+      },
     }),
     green: fighter({
       id: 'green',
@@ -205,6 +233,18 @@
         durationMs: constants.shadowStrikeDuration,
         damage: constants.shadowStrikeDamage,
         color: '#65ff9a',
+      },
+      guide: {
+        q: [
+          '充满 100 能量且 18 秒冷却结束后，召唤两架持续 8 秒的后方僚机。',
+          '主机每次射击时，僚机各发射一枚半尺寸、0.5 伤害的绿色支援弹。',
+          '散射弹与双倍火力会同步强化僚机射击。',
+        ],
+        e: [
+          '召唤两道约 0.45 秒的影分身，优先突袭最近至多两架不同的普通敌机，各造成 2 点伤害。',
+          '没有普通敌机时，两道影分身共同攻击 Boss，合计造成 4 点伤害；无目标不触发冷却。',
+          '冷却 12 秒；击杀只计分，不掉强化包、不增加 Q 能量，也不会影响 Q 僚机。',
+        ],
       },
     }),
     yellow: fighter({
@@ -243,6 +283,17 @@
         damage: constants.blinkDamage,
         flashMs: constants.blinkFlash,
         color: '#ffe85b',
+      },
+      guide: {
+        q: [
+          '充满 100 能量且 18 秒冷却结束后，接下来 5 秒发射的金色子弹获得追踪。',
+          '每发子弹优先平滑追踪最近普通敌机；没有普通敌机时追踪 Boss；无目标时直线飞行。',
+          '散射弹与双倍火力照常叠加，已发射的追踪弹会持续追击到命中或离场。',
+        ],
+        e: [
+          '在机头部署一个持续 5 秒的金色空间标记；再次按 E 传送到标记位置。',
+          '不锁定敌机、不造成伤害、不清弹；二段完成后冷却 10 秒，标记自然消失不进冷却。',
+        ],
       },
       rules: homingRules,
     }),

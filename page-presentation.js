@@ -85,6 +85,17 @@
             .join('') || '<li>尚无记录</li>';
     }
 
+    function guideMarkup() {
+      const fighterCards = catalog
+        .list()
+        .map((fighter) => {
+          const utility = fighter.utility;
+          return `<article class="guide-fighter" style="--guide-color:${fighter.selection.border}"><h4>${fighter.name}</h4><p>基础：移动速度 ${fighter.speed} · 普通子弹伤害 ${fighter.bulletDamage}。</p><p><b>Q · ${fighter.skillName}</b></p><ul>${fighter.guide.q.map((item) => `<li>${item}</li>`).join('')}</ul><p><b>E · ${utility.name}</b></p><ul>${fighter.guide.e.map((item) => `<li>${item}</li>`).join('')}</ul></article>`;
+        })
+        .join('');
+      return `<h2>游戏说明</h2><h3>操作与基础规则</h3><ul><li>按住方向键或 W/A/S/D 在战场下方 60% 区域四方向移动；武器自动向上射击。</li><li>Q 是充能技：击毁普通、快速、精英敌机分别获得 2 / 3 / 5 能量；满 100 能量并结束 18 秒冷却后可释放。</li><li>E 是当前战机的独立普通技；Space 或右侧按钮可暂停 / 继续。初始 3 点生命，敌弹或撞机造成 1 次伤害，受击后短暂无敌且命中敌弹立即消失。</li><li>普通、快速、精英敌机随机出现；达到 300 分后敌机会开始发射敌弹。</li></ul><h3>强化包</h3><ul><li>击毁敌机有合计 10% 概率掉落：护盾 2.5%、散射弹 3%、双倍火力 3.5%、治疗药水 1%。</li><li>护盾抵挡一次命中；散射弹每次发射三发；双倍火力将间隔从 180ms 缩短到 90ms；前三者持续 8 秒。</li><li>治疗药水立即恢复 1 格生命，满血时仍会消耗但没有效果。</li></ul><h3>Boss、通关与排行</h3><ul><li>首次达到 10,000、30,000、50,000、100,000 分时依次触发 Boss 战，并清空普通敌军。Boss 横移并交替使用扇形与三连弹幕。</li><li>每次击败 Boss 奖励 2,000 分；击败第一 Boss 获得上榜资格，击败最终 Boss 即通关。</li><li>结束时，获得资格的玩家可登记 ID。成绩只保存在当前浏览器，按分数降序、同分按用时升序保留前 10 条；暂停不计时。</li></ul><h3>战机图鉴</h3>${fighterCards}<button class="btn modal-secondary" id="closeGuide">关闭说明</button>`;
+    }
+
     function renderHud(snapshot) {
       const state = snapshot.game,
         view = snapshot.view,
@@ -129,6 +140,18 @@
       const skillButton = $('#skillButton');
       skillButton.textContent = 'Q · 充能技 · ' + fighter.skillName;
       skillButton.disabled = !skillReady;
+      const guideButton = $('#guideBtn'),
+        canOpenGuide = state.status === 'ready' || state.status === 'paused';
+      if (guideButton) {
+        guideButton.disabled = !canOpenGuide;
+        guideButton.title = canOpenGuide ? '查看完整游戏规则' : '请先暂停再查看说明';
+      }
+      const soundButton = $('#soundBtn');
+      if (soundButton) {
+        const soundEnabled = snapshot.soundEnabled !== false;
+        soundButton.textContent = soundEnabled ? '🔊 音效：开' : '🔇 音效：关';
+        soundButton.className = 'btn sound-btn ' + (soundEnabled ? 'sound-on' : 'sound-off');
+      }
       const blinkCard = $('#blinkCard'),
         blinkButton = $('#blinkButton'),
         blinkStatus = $('#blinkStatus'),
@@ -599,6 +622,7 @@
       overlay.hidden = false;
       if (modalKey === key) return;
       modalKey = key;
+      modal.className = key === 'guide' ? 'modal guide-modal' : 'modal';
       modal.innerHTML = markup;
       bindControls();
     }
@@ -621,6 +645,15 @@
               idInput = $('#pid');
             if (save) bind(save, 'click', () => emit({ type: 'register', id: idInput.value }));
           },
+        );
+        return;
+      }
+      if (localOverlay === 'guide') {
+        showModal('guide', guideMarkup(), () =>
+          bind($('#closeGuide'), 'click', () => {
+            localOverlay = null;
+            renderModal(current);
+          }),
         );
         return;
       }
@@ -666,6 +699,12 @@
     bind($('#blinkButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#shieldButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#shadowStrikeButton'), 'click', () => emit({ type: 'blink' }));
+    bind($('#guideBtn'), 'click', () => {
+      if (!current || (current.game.status !== 'ready' && current.game.status !== 'paused')) return;
+      localOverlay = 'guide';
+      renderModal(current);
+    });
+    bind($('#soundBtn'), 'click', () => emit({ type: 'toggle-sound' }));
     bind($('#rankBtn'), 'click', () => {
       localOverlay = 'rank';
       renderModal(current);

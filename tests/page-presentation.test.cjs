@@ -64,6 +64,8 @@ function makeDocument() {
       '#pause',
       '#restart',
       '#rankBtn',
+      '#guideBtn',
+      '#soundBtn',
     ].map((selector) => [selector, new Element()]),
   );
   const dynamic = {};
@@ -72,7 +74,8 @@ function makeDocument() {
     defaultView: {},
     querySelector(selector) {
       if (elements[selector]) return elements[selector];
-      if (['#go', '#close', '#again', '#save', '#pid'].includes(selector)) return control(selector);
+      if (['#go', '#close', '#closeGuide', '#again', '#save', '#pid'].includes(selector))
+        return control(selector);
       return null;
     },
     querySelectorAll(selector) {
@@ -111,6 +114,7 @@ const snapshot = ({
   view = {},
   best = 1200,
   board = [{ id: 'ace', score: 1200, time: 10000 }],
+  soundEnabled = true,
 } = {}) => ({
   game: {
     fighterId: 'azure',
@@ -142,6 +146,7 @@ const snapshot = ({
   view: { overlay: 'ready', notice: null, canRegister: false, endReason: null, ...view },
   best,
   board,
+  soundEnabled,
 });
 
 test('renders HUD, dynamic fighter choices, and canvas fallback from a session snapshot', () => {
@@ -349,4 +354,54 @@ test('turns overlays and touch controls into intents while keeping ranking local
   fake.dynamic['#save'].fire('click');
   fake.dynamic['#again'].fire('click');
   assert.deepEqual(intents.splice(0), [{ type: 'register', id: 'ace' }, { type: 'restart' }]);
+});
+
+test('opens the complete guide only when ready or paused and restores the original overlay on close', () => {
+  const fake = makeDocument();
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+  });
+  page.render(snapshot());
+  assert.equal(fake.elements['#guideBtn'].disabled, false);
+  fake.elements['#guideBtn'].fire('click');
+  assert.match(fake.elements['#modal'].innerHTML, /游戏说明/);
+  assert.match(fake.elements['#modal'].innerHTML, /蔚蓝风暴/);
+  assert.match(fake.elements['#modal'].innerHTML, /银翼杀手/);
+  assert.match(fake.elements['#modal'].innerHTML, /青岚影忍/);
+  assert.match(fake.elements['#modal'].innerHTML, /曜金流星/);
+  assert.match(fake.elements['#modal'].innerHTML, /护盾 2.5%/);
+  fake.dynamic['#closeGuide'].fire('click');
+  assert.match(fake.elements['#modal'].innerHTML, /准备起飞/);
+  page.render(snapshot({ game: { status: 'running' }, view: { overlay: 'none' } }));
+  assert.equal(fake.elements['#guideBtn'].disabled, true);
+  fake.elements['#guideBtn'].fire('click');
+  assert.equal(fake.elements['#overlay'].hidden, true);
+  page.render(snapshot({ game: { status: 'paused' }, view: { overlay: 'none' } }));
+  assert.equal(fake.elements['#guideBtn'].disabled, false);
+  fake.elements['#guideBtn'].fire('click');
+  assert.match(fake.elements['#modal'].innerHTML, /Boss、通关与排行/);
+  fake.dynamic['#closeGuide'].fire('click');
+  assert.equal(fake.elements['#overlay'].hidden, true);
+  page.destroy();
+});
+
+test('renders the persisted sound state and emits a sound-toggle intent', () => {
+  const fake = makeDocument(),
+    intents = [];
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+    onIntent: (intent) => intents.push(intent),
+  });
+  page.render(snapshot({ soundEnabled: true }));
+  assert.equal(fake.elements['#soundBtn'].textContent, '🔊 音效：开');
+  fake.elements['#soundBtn'].fire('click');
+  assert.deepEqual(intents, [{ type: 'toggle-sound' }]);
+  page.render(snapshot({ soundEnabled: false }));
+  assert.equal(fake.elements['#soundBtn'].textContent, '🔇 音效：关');
+  assert.match(fake.elements['#soundBtn'].className, /sound-off/);
+  page.destroy();
 });

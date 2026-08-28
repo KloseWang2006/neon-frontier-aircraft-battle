@@ -10,6 +10,7 @@
       game: rules.create({ status: 'ready' }),
       best: storage.loadHigh(),
       board: storage.loadBoard(),
+      events: [],
       view: { overlay: 'ready', notice: null, noticeMs: 0, canRegister: false, endReason: null },
     };
   }
@@ -17,6 +18,7 @@
     return {
       ...s,
       game: s.rules.create({ fighterId: s.game.fighterId }),
+      events: [],
       view: { overlay: null, notice: null, noticeMs: 0, canRegister: false, endReason: null },
     };
   }
@@ -35,14 +37,17 @@
     };
   }
   function togglePause(s) {
-    if (s.game.status === 'running') return { ...s, game: { ...s.game, status: 'paused' } };
-    if (s.game.status === 'paused') return { ...s, game: { ...s.game, status: 'running' } };
+    if (s.game.status === 'running')
+      return { ...s, events: [], game: { ...s.game, status: 'paused' } };
+    if (s.game.status === 'paused')
+      return { ...s, events: [], game: { ...s.game, status: 'running' } };
     return s;
   }
   function advance(s, frame = {}) {
     if (s.game.status !== 'running')
       return {
         ...s,
+        events: [],
         view: {
           ...s.view,
           noticeMs: Math.max(0, s.view.noticeMs - (frame.dt || 16)),
@@ -64,7 +69,7 @@
         };
     }
     const best = s.storage.saveHigh(Math.max(s.best, r.state.score));
-    return { ...s, game: r.state, best, view };
+    return { ...s, game: r.state, best, view, events: r.events };
   }
   function register(s, id) {
     const clean = String(id || '').trim();

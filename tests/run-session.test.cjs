@@ -17,6 +17,17 @@ test('starts, pauses without advancing, and restarts', () => {
   s = Session.restart(s);
   assert.equal(s.view.overlay, null);
   assert.equal(s.game.score, 0);
+  assert.deepEqual(s.events, []);
+});
+test('forwards each running-frame rule event once and clears it while paused', () => {
+  let s = make();
+  s = Session.start(s);
+  s.game = Rules.create({ fireClock: 180 });
+  s = Session.advance(s, { dt: 0 });
+  assert.ok(s.events.some((event) => event.type === 'player-volley'));
+  s = Session.togglePause(s);
+  s = Session.advance(s, { dt: 16 });
+  assert.deepEqual(s.events, []);
 });
 test('selects a fighter only while ready and keeps it on restart', () => {
   let s = make();
