@@ -52,6 +52,10 @@ function makeDocument() {
       '#shieldSkillName',
       '#shieldSkillStatus',
       '#shieldButton',
+      '#shadowStrikeCard',
+      '#shadowStrikeName',
+      '#shadowStrikeStatus',
+      '#shadowStrikeButton',
       '#notice',
       '#rank',
       '#overlay',
@@ -130,6 +134,8 @@ const snapshot = ({
     wingmenMs: 0,
     homingMs: 0,
     shieldAvailable: false,
+    shadowStrikeCooldownMs: 0,
+    shadowStrikes: [],
     elapsedMs: 0,
     ...game,
   },
@@ -270,6 +276,40 @@ test('renders the Azure Storm shield utility HUD and emits its E intent', () => 
   );
   assert.match(fake.elements['#shieldSkillStatus'].textContent, /冷却/);
   assert.equal(fake.elements['#shieldButton'].disabled, true);
+  page.destroy();
+});
+
+test('renders 青岚影忍 independent shadow-strike HUD and its Canvas effect', () => {
+  const fake = makeDocument(),
+    intents = [];
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+    onIntent: (intent) => intents.push(intent),
+  });
+  page.render(
+    snapshot({
+      game: {
+        fighterId: 'green',
+        wingmenMs: 8000,
+        shadowStrikes: [
+          { fromX: 220, fromY: 650, hitX: 220, hitY: 420, remainingMs: 450, totalMs: 450 },
+        ],
+      },
+    }),
+  );
+  assert.equal(fake.elements['#shadowStrikeCard'].hidden, false);
+  assert.equal(fake.elements['#shadowStrikeName'].textContent, '影刃双袭');
+  assert.equal(fake.elements['#shadowStrikeStatus'].textContent, '影刃出击');
+  assert.equal(fake.elements['#shadowStrikeButton'].disabled, true);
+  assert.ok(fake.calls.some((call) => call[0] === 'drawImage' || call[0] === 'fillRect'));
+  fake.elements['#shadowStrikeButton'].fire('click');
+  assert.deepEqual(intents, [{ type: 'blink' }]);
+  page.render(snapshot({ game: { fighterId: 'green', shadowStrikeCooldownMs: 12000 } }));
+  assert.match(fake.elements['#shadowStrikeStatus'].textContent, /冷却 12.0s/);
+  page.render(snapshot({ game: { fighterId: 'azure' } }));
+  assert.equal(fake.elements['#shadowStrikeCard'].hidden, true);
   page.destroy();
 });
 

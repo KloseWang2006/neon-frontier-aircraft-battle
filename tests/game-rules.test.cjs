@@ -156,6 +156,76 @@ test('青岚影忍 summons two half-size wingmen that inherit scatter and double
   r = run({ ...r.state, status: 'paused' }, { dt: 2000 });
   assert.equal(r.state.wingmenMs, 7000);
 });
+test('青岚影忍 E skill strikes the two nearest targets without changing Q wingmen', () => {
+  const enemies = [
+    { kind: 'normal', id: 1, x: 210, y: 500, w: 38, h: 38, hp: 2, score: 100, speed: 0 },
+    { kind: 'fast', id: 2, x: 320, y: 500, w: 30, h: 30, hp: 2, score: 150, speed: 0 },
+    { kind: 'elite', id: 3, x: 20, y: 320, w: 58, h: 52, hp: 3, score: 350, speed: 0 },
+  ];
+  const r = run(
+    GameRules.create({ fighterId: 'green', wingmenMs: 8000, skillCharge: 45, enemies }),
+    { dt: 0, input: { blink: true } },
+  );
+  assert.equal(r.state.wingmenMs, 8000);
+  assert.equal(r.state.skillCharge, 45);
+  assert.equal(r.state.shadowStrikeCooldownMs, 12000);
+  assert.equal(r.state.shadowStrikes.length, 2);
+  assert.equal(
+    r.state.enemies.find((enemy) => enemy.id === 1),
+    undefined,
+  );
+  assert.equal(
+    r.state.enemies.find((enemy) => enemy.id === 2),
+    undefined,
+  );
+  assert.equal(r.state.enemies.find((enemy) => enemy.id === 3).hp, 3);
+  assert.equal(r.state.score, 250);
+  assert.equal(r.state.powerups.length, 0);
+  assert.ok(r.events.some((event) => event.type === 'shadow-strike-activated'));
+});
+test('青岚影忍 E attacks Boss twice only without ordinary enemies, and ignores an empty field', () => {
+  const boss = {
+    stage: 1,
+    trigger: 10000,
+    x: 160,
+    y: 70,
+    w: 160,
+    h: 120,
+    hp: 10,
+    maxHp: 10,
+    attackClock: 0,
+    pattern: 0,
+    phase: 0,
+  };
+  let r = run(GameRules.create({ fighterId: 'green', boss }), { dt: 0, input: { blink: true } });
+  assert.equal(r.state.boss.hp, 6);
+  assert.equal(r.state.shadowStrikes.length, 2);
+  assert.equal(r.state.shadowStrikeCooldownMs, 12000);
+  r = run(GameRules.create({ fighterId: 'green' }), { dt: 0, input: { blink: true } });
+  assert.equal(r.state.shadowStrikes.length, 0);
+  assert.equal(r.state.shadowStrikeCooldownMs, 0);
+});
+test('青岚影忍 E kills score without drops or charge, and its cooldown freezes while paused', () => {
+  let r = run(
+    GameRules.create({
+      fighterId: 'green',
+      skillCharge: 20,
+      enemies: [
+        { kind: 'elite', id: 3, x: 210, y: 500, w: 58, h: 52, hp: 2, score: 350, speed: 0 },
+      ],
+    }),
+    { dt: 0, input: { blink: true }, random: () => 0 },
+  );
+  assert.equal(r.state.score, 350);
+  assert.equal(r.state.skillCharge, 20);
+  assert.equal(r.state.powerups.length, 0);
+  const paused = run({ ...r.state, status: 'paused' }, { dt: 2000 }).state;
+  assert.equal(paused.shadowStrikeCooldownMs, 12000);
+  assert.equal(paused.shadowStrikes[0].remainingMs, 450);
+  r = run(r.state, { dt: 450 });
+  assert.equal(r.state.shadowStrikes.length, 0);
+  assert.equal(r.state.shadowStrikeCooldownMs, 11550);
+});
 test('银翼杀手 activates three seconds of stealth without clearing enemies', () => {
   let s = GameRules.create({
     fighterId: 'silver',

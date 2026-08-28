@@ -26,6 +26,7 @@ test('keeps semantic neon colors for HUD state and powerups', () => {
   assert.match(compactPresentation, /className='buffbuff-'\+id/);
   assert.match(compactPage, /\.blink-card-silver\s*\{[^}]*border-color:\s*#b9c8d9/);
   assert.match(compactPage, /\.blink-card-silver\s+\.blink-ready\s*\{[^}]*color:\s*#e9f2ff/);
+  assert.match(compactPage, /\.shadow-strike-card\s*\{[^}]*border:\s*1px\s+solid\s+#67e99a/);
 });
 
 test('loads the healing sprite and draws its successful-pickup feedback', () => {
@@ -75,6 +76,8 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPresentation, /fighter\.visual\.effect\.kind!=='wingmen'/);
   assert.match(compactPresentation, /functiondrawWingmen\(state,fighter\)/);
   assert.match(compactPresentation, /functiondrawHoming\(state,fighter\)/);
+  assert.match(compactPresentation, /functiondrawShadowStrikes\(state,fighter\)/);
+  assert.match(compactPresentation, /shadowStrikeCooldownMs/);
   assert.match(compactPresentation, /bullet\.homing/);
   assert.match(compactPage, /\.homing-active\s*\{\s*color:\s*#ffe85b/);
   assert.doesNotMatch(compactPage, /functiondraw\(/);

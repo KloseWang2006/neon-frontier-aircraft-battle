@@ -20,6 +20,9 @@
     shieldSkillDuration: 5000,
     shieldSkillCooldown: 30000,
     shieldSkillReduction: 5000,
+    shadowStrikeCooldown: 12000,
+    shadowStrikeDuration: 450,
+    shadowStrikeDamage: 2,
   });
   const noOp = () => {};
   const noShotDecoration = () => {};
@@ -194,6 +197,15 @@
         statusClass: 'wingmen-active',
       },
       rules: wingmenRules,
+      utility: {
+        kind: 'shadow-strike',
+        name: '影刃双袭',
+        key: 'E',
+        cooldownMs: constants.shadowStrikeCooldown,
+        durationMs: constants.shadowStrikeDuration,
+        damage: constants.shadowStrikeDamage,
+        color: '#65ff9a',
+      },
     }),
     yellow: fighter({
       id: 'yellow',

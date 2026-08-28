@@ -207,6 +207,30 @@
         shieldButton.textContent = 'E · 普通技 · ' + shieldAbility.name;
         shieldButton.disabled = state.shieldSkillMs > 0 || state.shieldSkillCooldownMs > 0;
       }
+      const shadowStrikeCard = $('#shadowStrikeCard'),
+        shadowStrikeButton = $('#shadowStrikeButton'),
+        shadowStrikeStatus = $('#shadowStrikeStatus'),
+        shadowStrikeAbility =
+          fighter.utility && fighter.utility.kind === 'shadow-strike' ? fighter.utility : null;
+      if (shadowStrikeCard) shadowStrikeCard.hidden = !shadowStrikeAbility;
+      if (shadowStrikeAbility && shadowStrikeButton && shadowStrikeStatus) {
+        const active = state.shadowStrikes && state.shadowStrikes.length > 0,
+          cooldown = state.shadowStrikeCooldownMs || 0,
+          status = active
+            ? '影刃出击'
+            : cooldown > 0
+              ? '冷却 ' + (cooldown / 1000).toFixed(1) + 's'
+              : '可突袭';
+        $('#shadowStrikeName').textContent = shadowStrikeAbility.name;
+        shadowStrikeStatus.textContent = status;
+        shadowStrikeStatus.className = active
+          ? 'shadow-strike-active'
+          : cooldown > 0
+            ? 'shadow-strike-cooldown'
+            : 'shadow-strike-ready';
+        shadowStrikeButton.textContent = 'E · 普通技 · ' + shadowStrikeAbility.name;
+        shadowStrikeButton.disabled = active || cooldown > 0;
+      }
       document.querySelectorAll('[data-fighter]').forEach((button) => {
         const chosen = button.dataset.fighter === state.fighterId;
         button.classList.toggle('selected', chosen);
@@ -295,6 +319,40 @@
         context.lineTo(position.x + 15, position.y + 44);
         context.stroke();
         sprite(images[fighter.id], position.x, position.y, 30, 27, color);
+      }
+      context.restore();
+    }
+    function drawShadowStrikes(state, fighter) {
+      if (
+        !fighter.utility ||
+        fighter.utility.kind !== 'shadow-strike' ||
+        !(state.shadowStrikes && state.shadowStrikes.length)
+      )
+        return;
+      const color = fighter.utility.color;
+      context.save();
+      context.globalCompositeOperation = 'screen';
+      context.strokeStyle = color;
+      context.fillStyle = color;
+      context.shadowColor = color;
+      context.shadowBlur = 22;
+      for (const strike of state.shadowStrikes) {
+        const t = 1 - strike.remainingMs / strike.totalMs,
+          x = strike.fromX + (strike.hitX - strike.fromX) * t,
+          y = strike.fromY + (strike.hitY - strike.fromY) * t;
+        context.globalAlpha = 0.28 + (1 - t) * 0.58;
+        context.lineWidth = 3;
+        context.beginPath();
+        context.moveTo(strike.fromX, strike.fromY);
+        context.lineTo(x, y);
+        context.stroke();
+        context.globalAlpha = 0.72 + (1 - t) * 0.2;
+        sprite(images[fighter.id], x - 15, y - 14, 30, 27, color);
+        context.globalAlpha = 0.8 * (1 - t);
+        context.lineWidth = 4;
+        context.beginPath();
+        context.arc(strike.hitX, strike.hitY, 14 + t * 22, 0, Math.PI * 2);
+        context.stroke();
       }
       context.restore();
     }
@@ -518,6 +576,7 @@
       }
       drawStealth(state, fighter);
       drawWingmen(state, fighter);
+      drawShadowStrikes(state, fighter);
       drawHoming(state, fighter);
       drawBlink(state, fighter);
       drawShieldSkill(state, fighter);
@@ -606,6 +665,7 @@
     bind($('#skillButton'), 'click', () => emit({ type: 'skill' }));
     bind($('#blinkButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#shieldButton'), 'click', () => emit({ type: 'blink' }));
+    bind($('#shadowStrikeButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#rankBtn'), 'click', () => {
       localOverlay = 'rank';
       renderModal(current);

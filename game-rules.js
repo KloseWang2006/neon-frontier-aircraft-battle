@@ -27,7 +27,10 @@
     BLINK_DAMAGE = FighterCatalog.constants.blinkDamage,
     SHIELD_SKILL_DURATION = FighterCatalog.constants.shieldSkillDuration,
     SHIELD_SKILL_COOLDOWN = FighterCatalog.constants.shieldSkillCooldown,
-    SHIELD_SKILL_REDUCTION = FighterCatalog.constants.shieldSkillReduction;
+    SHIELD_SKILL_REDUCTION = FighterCatalog.constants.shieldSkillReduction,
+    SHADOW_STRIKE_COOLDOWN = FighterCatalog.constants.shadowStrikeCooldown,
+    SHADOW_STRIKE_DURATION = FighterCatalog.constants.shadowStrikeDuration,
+    SHADOW_STRIKE_DAMAGE = FighterCatalog.constants.shadowStrikeDamage;
   const FIGHTERS = FighterCatalog.fighters;
   const PLAYER = { x: 210, y: 630, w: 60, h: 54, lives: MAX_LIVES, invincibleMs: 0 };
   const THRESHOLDS = [10000, 30000, 50000, 100000],
@@ -43,6 +46,7 @@
     boss: s.boss && { ...s.boss },
     blinkMarker: s.blinkMarker && { ...s.blinkMarker },
     blinkFlash: s.blinkFlash && { ...s.blinkFlash },
+    shadowStrikes: s.shadowStrikes.map((v) => ({ ...v })),
     triggered: [...s.triggered],
     bossesDefeated: [...s.bossesDefeated],
   });
@@ -80,6 +84,8 @@
       shieldSkillCooldownMs: 0,
       shieldSkillMs: 0,
       shieldSkillArmed: false,
+      shadowStrikeCooldownMs: 0,
+      shadowStrikes: [],
       shieldAvailable: false,
       triggered: [],
       bossesDefeated: [],
@@ -98,8 +104,10 @@
       bossesDefeated: [...(o.bossesDefeated || [])],
       blinkMarker: o.blinkMarker ? { ...o.blinkMarker } : null,
       blinkFlash: o.blinkFlash ? { ...o.blinkFlash } : null,
+      shadowStrikes: (o.shadowStrikes || []).map((v) => ({ ...v })),
       shieldSkillCooldownMs: Math.max(0, o.shieldSkillCooldownMs || 0),
       shieldSkillMs: Math.max(0, o.shieldSkillMs || 0),
+      shadowStrikeCooldownMs: Math.max(0, o.shadowStrikeCooldownMs || 0),
       shieldSkillArmed: Boolean(o.shieldSkillArmed),
     };
   }
@@ -202,6 +210,21 @@
     if (s.player.lives <= 0) s.status = 'over';
   }
 
+  function defeatBoss(s, events, boss) {
+    s.score += 2000;
+    s.bossesDefeated.push(boss.trigger);
+    s.boss = null;
+    events.push({ type: 'boss-defeated', stage: boss.stage });
+    if (boss.stage === 1) {
+      s.rankEligible = true;
+      events.push({ type: 'ranking-unlocked' });
+    }
+    if (boss.stage === 4) {
+      s.status = 'success';
+      events.push({ type: 'run-ended', reason: 'victory' });
+    }
+  }
+
   function shieldAbility(s) {
     return fighter(s).utility && fighter(s).utility.kind === 'shield' ? fighter(s).utility : null;
   }
@@ -226,6 +249,72 @@
     s.shieldAvailable = true;
     s.shieldMs = ability.durationMs;
     events.push({ type: 'shield-skill-activated' });
+  }
+
+  function shadowStrikeAbility(s) {
+    return fighter(s).utility && fighter(s).utility.kind === 'shadow-strike'
+      ? fighter(s).utility
+      : null;
+  }
+  function shadowStrikeTargets(s) {
+    const px = s.player.x + s.player.w / 2,
+      py = s.player.y + s.player.h / 2;
+    return s.enemies
+      .map((enemy) => ({
+        enemy,
+        distance: Math.hypot(enemy.x + enemy.w / 2 - px, enemy.y + enemy.h / 2 - py),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 2)
+      .map(({ enemy }) => enemy);
+  }
+  function addShadowStrike(
+    s,
+    ability,
+    target,
+    targetKind,
+    offset,
+    events,
+    deferBossDefeat = false,
+  ) {
+    const fromX = s.player.x + s.player.w / 2 + offset,
+      fromY = s.player.y + s.player.h / 2 + 8,
+      hitX = target.x + target.w / 2,
+      hitY = target.y + target.h / 2;
+    s.shadowStrikes.push({
+      fromX,
+      fromY,
+      hitX,
+      hitY,
+      targetKind,
+      remainingMs: ability.durationMs,
+      totalMs: ability.durationMs,
+    });
+    target.hp -= ability.damage;
+    if (targetKind === 'enemy' && target.hp <= 0) {
+      s.score += target.score;
+      s.enemies = s.enemies.filter((enemy) => enemy !== target);
+    }
+    if (targetKind === 'boss' && target.hp <= 0 && !deferBossDefeat) defeatBoss(s, events, target);
+  }
+  function activateShadowStrike(s, events) {
+    const ability = shadowStrikeAbility(s);
+    if (!ability || s.shadowStrikeCooldownMs > 0 || s.shadowStrikes.length) return;
+    const targets = shadowStrikeTargets(s);
+    if (targets.length) {
+      targets.forEach((target, index) =>
+        addShadowStrike(s, ability, target, 'enemy', index === 0 ? -14 : 14, events),
+      );
+    } else if (s.boss) {
+      const boss = s.boss;
+      addShadowStrike(s, ability, boss, 'boss', -14, events, true);
+      addShadowStrike(s, ability, boss, 'boss', 14, events, true);
+      if (boss.hp <= 0) defeatBoss(s, events, boss);
+    } else {
+      return;
+    }
+    s.shadowStrikeCooldownMs = ability.cooldownMs;
+    events.push({ type: 'shadow-strike-activated', targetCount: s.shadowStrikes.length });
   }
 
   function blinkAbility(s) {
@@ -401,19 +490,7 @@
       target.hp -= ability.damage;
       hitTarget = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
       if (target.hp <= 0) {
-        s.score += 2000;
-        s.bossesDefeated.push(target.trigger);
-        const stage = target.stage;
-        s.boss = null;
-        events.push({ type: 'boss-defeated', stage });
-        if (stage === 1) {
-          s.rankEligible = true;
-          events.push({ type: 'ranking-unlocked' });
-        }
-        if (stage === 4) {
-          s.status = 'success';
-          events.push({ type: 'run-ended', reason: 'victory' });
-        }
+        defeatBoss(s, events, target);
       }
     }
     s.blinkCooldownMs = marker.cooldownAfterMs || ability.trackedCooldownMs;
@@ -449,6 +526,10 @@
     s.skillCooldownMs = Math.max(0, s.skillCooldownMs - ms);
     tickShieldSkill(s, ms, events);
     s.blinkCooldownMs = Math.max(0, s.blinkCooldownMs - ms);
+    s.shadowStrikeCooldownMs = Math.max(0, s.shadowStrikeCooldownMs - ms);
+    s.shadowStrikes = s.shadowStrikes
+      .map((strike) => ({ ...strike, remainingMs: Math.max(0, strike.remainingMs - ms) }))
+      .filter((strike) => strike.remainingMs > 0);
     if (s.blinkFlash) {
       s.blinkFlash.remainingMs = Math.max(0, s.blinkFlash.remainingMs - ms);
       if (!s.blinkFlash.remainingMs) s.blinkFlash = null;
@@ -558,18 +639,7 @@
         used.add(bi);
         if ((s.boss.hp -= b.damage ?? 1) <= 0) {
           const boss = s.boss;
-          s.score += 2000;
-          s.bossesDefeated.push(boss.trigger);
-          s.boss = null;
-          events.push({ type: 'boss-defeated', stage: boss.stage });
-          if (boss.stage === 1) {
-            s.rankEligible = true;
-            events.push({ type: 'ranking-unlocked' });
-          }
-          if (boss.stage === 4) {
-            s.status = 'success';
-            events.push({ type: 'run-ended', reason: 'victory' });
-          }
+          defeatBoss(s, events, boss);
         }
         continue;
       }
@@ -605,7 +675,8 @@
       if (blinkAbility(s)) {
         if (s.blinkMarker) triggerBlink(s, events);
         else launchBlink(s, random, events);
-      } else activateShieldSkill(s, events);
+      } else if (shadowStrikeAbility(s)) activateShadowStrike(s, events);
+      else activateShieldSkill(s, events);
     }
     for (const b of s.enemyBullets)
       if (hit(b, s.player)) {
@@ -667,6 +738,9 @@
       SHIELD_SKILL_DURATION,
       SHIELD_SKILL_COOLDOWN,
       SHIELD_SKILL_REDUCTION,
+      SHADOW_STRIKE_COOLDOWN,
+      SHADOW_STRIKE_DURATION,
+      SHADOW_STRIKE_DAMAGE,
     },
   };
 });

@@ -362,6 +362,25 @@
     .shield-skill-cooldown {
       color: #9eb6c8;
     }
+    .shadow-strike-card {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #67e99a;
+      border-radius: 10px;
+      background: #103b2a77;
+      box-shadow: 0 0 14px #56ff9b2b;
+    }
+    .shadow-strike-ready {
+      color: #8dffb5;
+      text-shadow: 0 0 10px #55ff90;
+    }
+    .shadow-strike-active {
+      color: #d1ffe0;
+      text-shadow: 0 0 12px #65ff9a;
+    }
+    .shadow-strike-cooldown {
+      color: #9dc9ac;
+    }
   </style>
   <style>
     .page {
@@ -436,6 +455,12 @@
                 <span id="shieldSkillName">潮涌屏障</span><b id="shieldSkillStatus">可释放</b>
               </div>
               <button class="btn skill-btn" id="shieldButton">E · 普通技 · 潮涌屏障</button>
+            </div>
+            <div class="shadow-strike-card" id="shadowStrikeCard" hidden>
+              <div class="row">
+                <span id="shadowStrikeName">影刃双袭</span><b id="shadowStrikeStatus">可突袭</b>
+              </div>
+              <button class="btn skill-btn" id="shadowStrikeButton">E · 普通技 · 影刃双袭</button>
             </div>
           </section>
           <section class="card">

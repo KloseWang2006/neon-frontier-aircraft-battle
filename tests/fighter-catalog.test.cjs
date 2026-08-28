@@ -41,6 +41,15 @@ test('lists the four selectable fighters with complete visual and skill descript
   assert.equal(FighterCatalog.get('silver').utility.mode, 'assault');
   assert.equal(FighterCatalog.get('yellow').utility.name, '星煌跃迁');
   assert.equal(FighterCatalog.get('yellow').utility.mode, 'beacon');
+  assert.deepEqual(FighterCatalog.get('green').utility, {
+    kind: 'shadow-strike',
+    name: '影刃双袭',
+    key: 'E',
+    cooldownMs: 12000,
+    durationMs: 450,
+    damage: 2,
+    color: '#65ff9a',
+  });
 });
 
 test('keeps skill visual descriptors separate from the pure ability rules', () => {
