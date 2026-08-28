@@ -160,7 +160,7 @@ test('renders HUD, dynamic fighter choices, and canvas fallback from a session s
   page.destroy();
 });
 
-test('renders the yellow fighter blink HUD states and hides it for other fighters', () => {
+test('renders the yellow fighter beacon HUD states and hides it for other fighters', () => {
   const fake = makeDocument();
   const page = Presentation.create({
     document: fake.document,
@@ -176,25 +176,69 @@ test('renders the yellow fighter blink HUD states and hides it for other fighter
       game: {
         fighterId: 'yellow',
         blinkCooldownMs: 1000,
-        blinkMarker: { locked: false, remainingMs: 4000 },
+        blinkMarker: null,
       },
     }),
   );
-  assert.match(fake.elements['#blinkStatus'].textContent, /标记追踪/);
+  assert.match(fake.elements['#blinkStatus'].textContent, /冷却/);
   assert.equal(fake.elements['#blinkButton'].disabled, true);
   page.render(
     snapshot({
       game: {
         fighterId: 'yellow',
         blinkCooldownMs: 0,
-        blinkMarker: { locked: true, noTarget: true, remainingMs: 4800 },
+        blinkMarker: { mode: 'beacon', locked: true, noTarget: true, remainingMs: 4800 },
       },
     }),
   );
-  assert.match(fake.elements['#blinkStatus'].textContent, /原地待命/);
+  assert.match(fake.elements['#blinkStatus'].textContent, /可跃迁/);
   assert.equal(fake.elements['#blinkButton'].disabled, false);
   page.render(snapshot({ game: { fighterId: 'azure' } }));
   assert.equal(fake.elements['#blinkCard'].hidden, true);
+  page.destroy();
+});
+
+test('renders the Silver Assassin assault HUD and waits for activity-zone entry', () => {
+  const fake = makeDocument();
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+  });
+  page.render(
+    snapshot({
+      game: {
+        fighterId: 'silver',
+        blinkMarker: {
+          mode: 'assault',
+          locked: true,
+          inRange: false,
+          targetKind: 'enemy',
+          remainingMs: 4200,
+        },
+      },
+    }),
+  );
+  assert.equal(fake.elements['#blinkCard'].hidden, false);
+  assert.match(fake.elements['#blinkCard'].className, /blink-card-silver/);
+  assert.match(fake.elements['#blinkStatus'].textContent, /等待进入活动区/);
+  assert.equal(fake.elements['#blinkButton'].disabled, true);
+  page.render(
+    snapshot({
+      game: {
+        fighterId: 'silver',
+        blinkMarker: {
+          mode: 'assault',
+          locked: true,
+          inRange: true,
+          targetKind: 'enemy',
+          remainingMs: 4200,
+        },
+      },
+    }),
+  );
+  assert.match(fake.elements['#blinkStatus'].textContent, /可瞬闪/);
+  assert.equal(fake.elements['#blinkButton'].disabled, false);
   page.destroy();
 });
 

@@ -24,6 +24,8 @@ test('keeps semantic neon colors for HUD state and powerups', () => {
   }
   assert.match(compactPresentation, /className='state-'\+stateName/);
   assert.match(compactPresentation, /className='buffbuff-'\+id/);
+  assert.match(compactPage, /\.blink-card-silver\s*\{[^}]*border-color:\s*#b9c8d9/);
+  assert.match(compactPage, /\.blink-card-silver\s+\.blink-ready\s*\{[^}]*color:\s*#e9f2ff/);
 });
 
 test('loads the healing sprite and draws its successful-pickup feedback', () => {

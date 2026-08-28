@@ -383,63 +383,130 @@ test('emits a run-ended event for death and final victory while paused time does
   assert.ok(r.events.some((e) => e.type === 'run-ended' && e.reason === 'victory'));
 });
 
-test('曜金流星瞬闪突袭 selects a safe ordinary target without starting cooldown until second phase', () => {
+test('银翼杀手瞬闪突袭 selects nearest ordinary target without starting cooldown until second phase', () => {
   const target = {
     kind: 'normal',
     id: 7,
     x: 200,
-    y: 360,
+    y: 500,
     w: 38,
     h: 38,
     hp: 1,
     score: 100,
     speed: 0,
   };
-  let r = run(GameRules.create({ fighterId: 'yellow', enemies: [target] }), {
+  let r = run(GameRules.create({ fighterId: 'silver', enemies: [target] }), {
     dt: 0,
     input: { blink: true },
     random: () => 0,
   });
   assert.equal(r.state.blinkCooldownMs, 0);
   assert.equal(r.state.blinkMarker.targetId, 7);
+  assert.equal(r.state.blinkMarker.targetKind, 'enemy');
   assert.equal(r.state.blinkMarker.locked, false);
   assert.equal(r.state.blinkMarker.remainingMs, 5000);
   assert.equal(r.state.score, 0);
-  r = run(r.state, { dt: 400 });
+  r = run(r.state, { dt: 200 });
   assert.equal(r.state.blinkMarker.locked, true);
   r = run(r.state, { dt: 0, input: { blink: true } });
   assert.equal(r.state.blinkCooldownMs, 15000);
 });
 
-test('瞬闪突袭 ignores unsafe or boss-only targets and cannot second-trigger while flying', () => {
+test('银翼杀手等待目标进入活动区后才允许二段，并优先普通敌机', () => {
+  const s = GameRules.create({
+    fighterId: 'silver',
+    enemies: [
+      { kind: 'normal', id: 3, x: 220, y: 100, w: 38, h: 38, hp: 1, score: 100, speed: 0 },
+      { kind: 'fast', id: 4, x: 330, y: 500, w: 30, h: 30, hp: 1, score: 150, speed: 0 },
+    ],
+  });
+  let r = run(s, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.blinkMarker.targetId, 4);
+  r = run(r.state, { dt: 500 });
+  assert.equal(r.state.blinkMarker.locked, true);
+  assert.equal(r.state.blinkMarker.inRange, true);
+  r = run(r.state, { dt: 0, input: { blink: true } });
+  assert.equal(
+    r.state.enemies.some((enemy) => enemy.id === 4),
+    false,
+  );
+  assert.equal(r.state.score, 150);
+});
+
+test('银翼标记锁定期间玩家子弹无法伤害目标，Boss目标二段只扣血不传送', () => {
+  let s = GameRules.create({
+    fighterId: 'silver',
+    bullets: [{ x: 200, y: 360, w: 8, h: 17, vx: 0, vy: 0 }],
+    enemies: [{ kind: 'elite', id: 5, x: 190, y: 360, w: 58, h: 52, hp: 3, score: 350, speed: 0 }],
+    blinkMarker: {
+      mode: 'assault',
+      x: 214,
+      y: 424,
+      w: 10,
+      h: 14,
+      locked: true,
+      inRange: true,
+      lost: false,
+      targetKind: 'enemy',
+      targetId: 5,
+      remainingMs: 4000,
+      cooldownAfterMs: 15000,
+    },
+  });
+  let r = run(s, { dt: 0 });
+  assert.equal(r.state.enemies[0].hp, 3);
+  s = GameRules.create({
+    fighterId: 'silver',
+    player: { x: 10, y: 630 },
+    boss: {
+      stage: 1,
+      trigger: 10000,
+      x: 160,
+      y: 80,
+      w: 160,
+      h: 120,
+      hp: 10,
+      maxHp: 10,
+      attackClock: 0,
+      pattern: 0,
+      phase: 0,
+    },
+    blinkMarker: {
+      mode: 'assault',
+      x: 235,
+      y: 212,
+      w: 10,
+      h: 14,
+      locked: true,
+      inRange: false,
+      lost: false,
+      targetKind: 'boss',
+      targetId: null,
+      remainingMs: 4000,
+      cooldownAfterMs: 15000,
+    },
+  });
+  r = run(s, { dt: 0, input: { blink: true } });
+  assert.equal(r.state.boss.hp, 7);
+  assert.equal(r.state.player.x, 10);
+  assert.equal(r.state.player.y, 630);
+  assert.equal(r.state.blinkCooldownMs, 15000);
+});
+
+test('曜金流星星煌跃迁只放置原地标记并在二段后进入十秒冷却', () => {
   let s = GameRules.create({
     fighterId: 'yellow',
+    player: { x: 120, y: 500 },
     enemies: [{ kind: 'normal', id: 1, x: 200, y: 200, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
   });
-  let r = run(s, { dt: 0, input: { blink: true }, random: () => 0 });
+  let r = run(s, { dt: 0, input: { blink: true } });
   assert.equal(r.state.blinkMarker.noTarget, true);
-  assert.equal(r.state.blinkMarker.locked, true);
+  assert.equal(r.state.blinkMarker.mode, 'beacon');
+  assert.equal(r.state.blinkMarker.targetId, null);
   assert.equal(r.state.blinkCooldownMs, 0);
   r = run(r.state, { dt: 0, input: { blink: true } });
   assert.equal(r.state.blinkMarker, null);
   assert.equal(r.state.blinkCooldownMs, 10000);
-  s = GameRules.create({
-    fighterId: 'yellow',
-    blinkCooldownMs: 1000,
-    blinkMarker: {
-      x: 1,
-      y: 2,
-      w: 10,
-      h: 14,
-      locked: false,
-      lost: false,
-      targetId: 1,
-      remainingMs: 4000,
-    },
-    enemies: [{ kind: 'normal', id: 1, x: 200, y: 360, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
-  });
-  r = run(s, { dt: 0, input: { blink: true } });
-  assert.equal(r.state.blinkMarker.locked, false);
   s = GameRules.create({
     fighterId: 'azure',
     enemies: [{ kind: 'normal', id: 1, x: 200, y: 360, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
@@ -447,7 +514,7 @@ test('瞬闪突袭 ignores unsafe or boss-only targets and cannot second-trigger
   assert.equal(run(s, { dt: 0, input: { blink: true } }).state.blinkMarker, null);
 });
 
-test('瞬闪二段在锁定后瞬移并造成三点伤害，只获得击杀分数', () => {
+test('银翼杀手二段在锁定后瞬移并造成三点伤害，只获得击杀分数', () => {
   const target = {
     kind: 'normal',
     id: 9,
@@ -460,15 +527,18 @@ test('瞬闪二段在锁定后瞬移并造成三点伤害，只获得击杀分�
     speed: 0,
   };
   const s = GameRules.create({
-    fighterId: 'yellow',
+    fighterId: 'silver',
     blinkCooldownMs: 9000,
     blinkMarker: {
       x: 214,
       y: 410,
       w: 10,
       h: 14,
+      mode: 'assault',
       locked: true,
       lost: false,
+      inRange: true,
+      targetKind: 'enemy',
       targetId: 9,
       remainingMs: 4000,
     },

@@ -157,6 +157,18 @@
         statusClass: 'stealth-active',
       },
       rules: stealthRules,
+      utility: {
+        kind: 'blink',
+        mode: 'assault',
+        name: '瞬闪突袭',
+        key: 'E',
+        trackedCooldownMs: constants.blinkTrackedCooldown,
+        windowMs: constants.blinkWindow,
+        markerSpeed: constants.blinkMarkerSpeed,
+        damage: constants.blinkDamage,
+        flashMs: constants.blinkFlash,
+        color: '#d9eeff',
+      },
     }),
     green: fighter({
       id: 'green',
@@ -208,7 +220,8 @@
       },
       utility: {
         kind: 'blink',
-        name: '瞬闪突袭',
+        mode: 'beacon',
+        name: '星煌跃迁',
         key: 'E',
         cooldownMs: constants.blinkCooldown,
         trackedCooldownMs: constants.blinkTrackedCooldown,

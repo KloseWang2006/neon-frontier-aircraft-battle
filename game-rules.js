@@ -231,6 +231,10 @@
   function blinkAbility(s) {
     return fighter(s).utility && fighter(s).utility.kind === 'blink' ? fighter(s).utility : null;
   }
+  function blinkMode(s) {
+    const ability = blinkAbility(s);
+    return ability && (ability.mode || (s.fighterId === 'yellow' ? 'beacon' : 'assault'));
+  }
   function markerPoint(enemy) {
     return { x: enemy.x + enemy.w / 2 - 5, y: enemy.y + enemy.h + 12 };
   }
@@ -240,11 +244,24 @@
       y: Math.max(TOP, Math.min(H - s.player.h, point.y)),
     };
   }
-  function blinkCandidate(s, enemy) {
+  function blinkTargetInRange(s, enemy) {
     const point = markerPoint(enemy),
       landing = blinkLanding(s, point),
       centerY = enemy.y + enemy.h / 2;
     return centerY >= TOP && centerY <= H && landing.y === point.y;
+  }
+  function blinkProtects(s, target, targetKind) {
+    const marker = s.blinkMarker;
+    const markerTargetKind =
+      marker && (marker.targetKind || (marker.targetId != null ? 'enemy' : null));
+    return Boolean(
+      marker &&
+        (marker.mode === 'assault' || (!marker.mode && blinkMode(s) === 'assault')) &&
+        marker.locked &&
+        !marker.lost &&
+        markerTargetKind === targetKind &&
+        (targetKind === 'boss' || marker.targetId === target.id),
+    );
   }
   function tickBlinkMarker(s, ms, events) {
     const marker = s.blinkMarker;
@@ -256,19 +273,30 @@
       return;
     }
     const target =
-      marker.targetId == null ? null : s.enemies.find((enemy) => enemy.id === marker.targetId);
+      marker.targetKind === 'boss'
+        ? s.boss
+        : marker.targetId == null
+          ? null
+          : s.enemies.find((enemy) => enemy.id === marker.targetId);
     if (!target) {
-      if (marker.noTarget) return;
+      if (
+        marker.mode === 'beacon' ||
+        (!marker.mode && blinkMode(s) === 'beacon') ||
+        marker.noTarget
+      )
+        return;
       if (!marker.lost) events.push({ type: 'blink-target-lost' });
       marker.targetId = null;
       marker.lost = true;
       marker.locked = true;
+      marker.inRange = true;
       return;
     }
     const point = markerPoint(target);
     if (marker.locked) {
       marker.x = point.x;
       marker.y = point.y;
+      marker.inRange = marker.targetKind === 'boss' || blinkTargetInRange(s, target);
       return;
     }
     const dx = point.x - marker.x,
@@ -279,6 +307,7 @@
       marker.x = point.x;
       marker.y = point.y;
       marker.locked = true;
+      marker.inRange = marker.targetKind === 'boss' || blinkTargetInRange(s, target);
       events.push({ type: 'blink-locked' });
     } else {
       marker.x += (dx / distance) * step;
@@ -288,34 +317,48 @@
   function launchBlink(s, random, events) {
     const ability = blinkAbility(s);
     if (!ability || s.blinkCooldownMs > 0 || s.blinkMarker) return;
-    const candidates = s.enemies.filter((enemy) => blinkCandidate(s, enemy));
-    if (!candidates.length) {
+    const start = {
+      x: s.player.x + s.player.w / 2 - 5,
+      y: s.player.y - 14,
+      w: 10,
+      h: 14,
+    };
+    if (blinkMode(s) === 'beacon') {
       s.blinkMarker = {
-        x: s.player.x + s.player.w / 2 - 5,
-        y: s.player.y - 14,
-        w: 10,
-        h: 14,
+        ...start,
+        mode: 'beacon',
         targetId: null,
+        targetKind: null,
         locked: true,
         lost: false,
         noTarget: true,
+        inRange: true,
         remainingMs: ability.windowMs,
         cooldownAfterMs: ability.emptyCooldownMs,
       };
       events.push({ type: 'blink-idle' });
       return;
     }
-    const target =
-      candidates[Math.min(candidates.length - 1, Math.floor(random() * candidates.length))];
+    const playerX = s.player.x + s.player.w / 2,
+      playerY = s.player.y + s.player.h / 2,
+      ordinary = s.enemies
+        .map((enemy) => ({
+          enemy,
+          distance: Math.hypot(enemy.x + enemy.w / 2 - playerX, enemy.y + enemy.h / 2 - playerY),
+        }))
+        .sort((a, b) => a.distance - b.distance),
+      target = ordinary.length ? ordinary[0].enemy : s.boss,
+      targetKind = target === s.boss && target ? 'boss' : target ? 'enemy' : null;
+    if (!target) return;
     s.blinkMarker = {
-      x: s.player.x + s.player.w / 2 - 5,
-      y: s.player.y - 14,
-      w: 10,
-      h: 14,
-      targetId: target.id,
+      ...start,
+      mode: 'assault',
+      targetId: targetKind === 'enemy' ? target.id : null,
+      targetKind,
       locked: false,
       lost: false,
       noTarget: false,
+      inRange: false,
       remainingMs: ability.windowMs,
       cooldownAfterMs: ability.trackedCooldownMs,
     };
@@ -325,19 +368,52 @@
     const ability = blinkAbility(s),
       marker = s.blinkMarker;
     if (!ability || !marker || !marker.locked) return;
+    const targetKind = marker.targetKind || (marker.targetId != null ? 'enemy' : null);
     const target =
-        marker.targetId == null ? null : s.enemies.find((enemy) => enemy.id === marker.targetId),
+        targetKind === 'boss'
+          ? s.boss
+          : marker.targetId == null
+            ? null
+            : s.enemies.find((enemy) => enemy.id === marker.targetId),
       from = { x: s.player.x + s.player.w / 2, y: s.player.y + s.player.h / 2 },
-      destination = blinkLanding(s, target ? markerPoint(target) : marker);
+      assault = marker.mode ? marker.mode === 'assault' : blinkMode(s) === 'assault',
+      targetReady =
+        !assault ||
+        marker.lost ||
+        targetKind === 'boss' ||
+        (target && (marker.inRange ?? blinkTargetInRange(s, target)));
+    if (assault && !targetReady) return;
+    const destination =
+      assault && target && targetKind === 'boss'
+        ? { x: s.player.x, y: s.player.y }
+        : blinkLanding(s, target ? markerPoint(target) : marker);
     s.player.x = destination.x;
     s.player.y = destination.y;
     let hitTarget = null;
-    if (target) {
+    if (assault && target && targetKind === 'enemy') {
       target.hp -= ability.damage;
       hitTarget = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
       if (target.hp <= 0) {
         s.score += target.score;
         s.enemies = s.enemies.filter((enemy) => enemy !== target);
+      }
+    } else if (assault && target && targetKind === 'boss') {
+      target.hp -= ability.damage;
+      hitTarget = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
+      if (target.hp <= 0) {
+        s.score += 2000;
+        s.bossesDefeated.push(target.trigger);
+        const stage = target.stage;
+        s.boss = null;
+        events.push({ type: 'boss-defeated', stage });
+        if (stage === 1) {
+          s.rankEligible = true;
+          events.push({ type: 'ranking-unlocked' });
+        }
+        if (stage === 4) {
+          s.status = 'success';
+          events.push({ type: 'run-ended', reason: 'victory' });
+        }
       }
     }
     s.blinkCooldownMs = marker.cooldownAfterMs || ability.trackedCooldownMs;
@@ -352,7 +428,11 @@
       totalMs: ability.flashMs,
     };
     s.blinkMarker = null;
-    events.push({ type: 'blink-triggered', hit: Boolean(target) });
+    events.push({
+      type: 'blink-triggered',
+      hit: Boolean(target && assault),
+      targetKind,
+    });
   }
 
   function step(state, { dt = 16, input = {}, random = Math.random } = {}) {
@@ -422,11 +502,15 @@
           s.spawnClock = 0;
           spawn(s, random);
         }
-        s.enemies = s.enemies.map((e) => ({
-          ...e,
-          y: e.y + (e.speed * ms) / 1000,
-          x: e.kind === 'fast' ? e.x + (Math.sin((e.phase += ms / 300)) * 42 * ms) / 1000 : e.x,
-        }));
+        s.enemies = s.enemies.map((e) => {
+          const phase = (e.phase || 0) + ms / 300;
+          return {
+            ...e,
+            phase,
+            y: e.y + (e.speed * ms) / 1000,
+            x: e.kind === 'fast' ? e.x + (Math.sin(phase) * 42 * ms) / 1000 : e.x,
+          };
+        });
         s.enemyFireClock += ms;
         if (s.score >= 300 && s.enemies.length && s.enemyFireClock >= 900) {
           s.enemyFireClock = 0;
@@ -470,6 +554,7 @@
     for (let bi = 0; bi < s.bullets.length; bi++) {
       const b = s.bullets[bi];
       if (s.boss && hit(b, s.boss)) {
+        if (blinkProtects(s, s.boss, 'boss')) continue;
         used.add(bi);
         if ((s.boss.hp -= b.damage ?? 1) <= 0) {
           const boss = s.boss;
@@ -491,6 +576,7 @@
       for (let ei = 0; ei < s.enemies.length; ei++) {
         const e = s.enemies[ei];
         if (dead.has(ei) || !hit(b, e)) continue;
+        if (blinkProtects(s, e, 'enemy')) continue;
         used.add(bi);
         if ((e.hp -= b.damage ?? 1) <= 0) {
           dead.add(ei);
@@ -511,7 +597,7 @@
       fighter(s).rules.activate({
         state: s,
         events,
-        inRange: (target) => inShockwaveRange(s, target),
+        inRange: (target) => !blinkProtects(s, target, 'enemy') && inShockwaveRange(s, target),
       });
     }
     tickBlinkMarker(s, 0, events);

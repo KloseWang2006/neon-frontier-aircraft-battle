@@ -37,6 +37,10 @@ test('lists the four selectable fighters with complete visual and skill descript
     ],
     [15000, 10000],
   );
+  assert.equal(FighterCatalog.get('silver').utility.name, '瞬闪突袭');
+  assert.equal(FighterCatalog.get('silver').utility.mode, 'assault');
+  assert.equal(FighterCatalog.get('yellow').utility.name, '星煌跃迁');
+  assert.equal(FighterCatalog.get('yellow').utility.mode, 'beacon');
 });
 
 test('keeps skill visual descriptors separate from the pure ability rules', () => {

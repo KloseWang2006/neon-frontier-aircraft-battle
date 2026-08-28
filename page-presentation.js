@@ -134,33 +134,54 @@
         blinkStatus = $('#blinkStatus'),
         blinkMarker = state.blinkMarker,
         blinkAbility = fighter.utility && fighter.utility.kind === 'blink' ? fighter.utility : null;
-      if (blinkCard) blinkCard.hidden = !blinkAbility;
+      const mode = blinkAbility
+        ? blinkAbility.mode || (state.fighterId === 'yellow' ? 'beacon' : 'assault')
+        : null;
+      if (blinkCard) {
+        blinkCard.hidden = !blinkAbility;
+        blinkCard.className = blinkAbility
+          ? 'blink-card ' + (mode === 'assault' ? 'blink-card-silver' : 'blink-card-yellow')
+          : 'blink-card';
+      }
       if (blinkAbility && blinkButton && blinkStatus) {
         const remaining = blinkMarker ? (blinkMarker.remainingMs / 1000).toFixed(1) + 's' : '',
-          status = blinkMarker
-            ? blinkMarker.noTarget
-              ? '原地待命 ' + remaining
-              : blinkMarker.locked
-                ? blinkMarker.lost
+          assault = mode === 'assault',
+          status = assault
+            ? blinkMarker
+              ? !blinkMarker.locked
+                ? '追踪中 ' + remaining
+                : blinkMarker.lost
                   ? '标记失效 ' + remaining
-                  : '已锁定 ' + remaining
-                : '标记追踪 ' + remaining
-            : state.blinkCooldownMs > 0
-              ? '冷却 ' + (state.blinkCooldownMs / 1000).toFixed(1) + 's'
-              : '可标记';
+                  : blinkMarker.targetKind === 'boss'
+                    ? 'Boss锁定 · 可突袭'
+                    : blinkMarker.inRange
+                      ? '可瞬闪 ' + remaining
+                      : '目标锁定，等待进入活动区 ' + remaining
+              : state.blinkCooldownMs > 0
+                ? '冷却 ' + (state.blinkCooldownMs / 1000).toFixed(1) + 's'
+                : '搜寻目标'
+            : blinkMarker
+              ? '可跃迁 ' + remaining
+              : state.blinkCooldownMs > 0
+                ? '冷却 ' + (state.blinkCooldownMs / 1000).toFixed(1) + 's'
+                : '可标记';
         $('#blinkName').textContent = blinkAbility.name;
         blinkStatus.textContent = status;
         blinkStatus.className =
-          blinkMarker && blinkMarker.locked
+          blinkMarker && blinkMarker.locked && (!assault || blinkMarker.inRange)
             ? 'blink-locked'
             : state.blinkCooldownMs
               ? 'blink-cooldown'
               : 'blink-ready';
-        blinkButton.textContent =
-          blinkMarker && blinkMarker.locked ? 'E · 普通技 · 二段瞬闪' : 'E · 普通技 · 瞬闪突袭';
-        blinkButton.disabled =
-          Boolean(blinkMarker && !blinkMarker.locked) ||
-          (!blinkMarker && state.blinkCooldownMs > 0);
+        blinkButton.textContent = assault
+          ? 'E · 普通技 · ' + (blinkMarker && blinkMarker.locked ? '二段瞬闪' : blinkAbility.name)
+          : 'E · 普通技 · ' + blinkAbility.name;
+        blinkButton.disabled = assault
+          ? blinkMarker
+            ? !blinkMarker.locked ||
+              (!blinkMarker.inRange && blinkMarker.targetKind !== 'boss' && !blinkMarker.lost)
+            : state.blinkCooldownMs > 0
+          : !blinkMarker && state.blinkCooldownMs > 0;
       }
       const shieldCard = $('#shieldCard'),
         shieldButton = $('#shieldButton'),
