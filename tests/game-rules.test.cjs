@@ -599,6 +599,7 @@ test('曜金流星星煌跃迁只放置原地标记并在二段后进入十秒�
   r = run(r.state, { dt: 0, input: { blink: true } });
   assert.equal(r.state.blinkMarker, null);
   assert.equal(r.state.blinkCooldownMs, 10000);
+  assert.equal(r.state.player.invincibleMs, 300);
   s = GameRules.create({
     fighterId: 'azure',
     enemies: [{ kind: 'normal', id: 1, x: 200, y: 360, w: 38, h: 38, hp: 1, score: 100, speed: 0 }],
@@ -646,7 +647,7 @@ test('银翼杀手二段在锁定后瞬移并造成三点伤害，只获得击�
   assert.ok(r.events.some((event) => event.type === 'blink-triggered' && event.hit));
 });
 
-test('目标先被击毁后，瞬闪仍可无伤位移；标记五秒过期且暂停冻结', () => {
+test('目标先被击毁后，瞬闪仍可无伤位移；黄色标记过期进入冷却且暂停冻结', () => {
   let s = GameRules.create({
     fighterId: 'yellow',
     blinkCooldownMs: 10000,
@@ -696,9 +697,70 @@ test('目标先被击毁后，瞬闪仍可无伤位移；标记五秒过期且�
       lost: false,
       targetId: null,
       remainingMs: 1,
+      mode: 'beacon',
+      cooldownAfterMs: 10000,
     },
   });
-  assert.equal(run(s, { dt: 16 }).state.blinkMarker, null);
+  r = run(s, { dt: 16, input: { blink: true } });
+  assert.equal(r.state.blinkMarker, null);
+  assert.equal(r.state.blinkCooldownMs, 10000);
+});
+
+test('曜金流星跃迁无敌 0.3 秒，期间不会被敌弹或撞机伤害', () => {
+  let r = run(
+    GameRules.create({
+      fighterId: 'yellow',
+      player: { x: 210, y: 630, lives: 3 },
+      blinkMarker: {
+        x: 214,
+        y: 500,
+        w: 10,
+        h: 14,
+        mode: 'beacon',
+        locked: true,
+        noTarget: true,
+        remainingMs: 4000,
+        cooldownAfterMs: 10000,
+      },
+    }),
+    { dt: 0, input: { blink: true } },
+  );
+  assert.equal(r.state.player.invincibleMs, 300);
+  r = run(
+    {
+      ...r.state,
+      enemyBullets: [
+        { x: r.state.player.x + 20, y: r.state.player.y + 20, w: 8, h: 14, vx: 0, vy: 0 },
+      ],
+      enemies: [
+        {
+          kind: 'normal',
+          x: r.state.player.x + 10,
+          y: r.state.player.y + 10,
+          w: 38,
+          h: 38,
+          hp: 1,
+          score: 100,
+          speed: 0,
+        },
+      ],
+    },
+    { dt: 0 },
+  );
+  assert.equal(r.state.player.lives, 3);
+  assert.equal(r.state.enemyBullets.length, 0);
+  r = run(
+    {
+      ...r.state,
+      player: { ...r.state.player, invincibleMs: 1 },
+      enemyBullets: [
+        { x: r.state.player.x + 20, y: r.state.player.y + 20, w: 8, h: 14, vx: 0, vy: 0 },
+      ],
+    },
+    { dt: 16 },
+  );
+  assert.equal(r.state.player.invincibleMs, 750);
+  assert.equal(r.state.player.lives, 2);
 });
 
 test('蔚蓝风暴潮涌屏障按 E 获得五秒护盾，未触发时冷却缩短五秒', () => {

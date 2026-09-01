@@ -30,7 +30,8 @@
     SHIELD_SKILL_REDUCTION = FighterCatalog.constants.shieldSkillReduction,
     SHADOW_STRIKE_COOLDOWN = FighterCatalog.constants.shadowStrikeCooldown,
     SHADOW_STRIKE_DURATION = FighterCatalog.constants.shadowStrikeDuration,
-    SHADOW_STRIKE_DAMAGE = FighterCatalog.constants.shadowStrikeDamage;
+    SHADOW_STRIKE_DAMAGE = FighterCatalog.constants.shadowStrikeDamage,
+    BLINK_TELEPORT_INVINCIBILITY = 300;
   const FIGHTERS = FighterCatalog.fighters;
   const PLAYER = { x: 210, y: 630, w: 60, h: 54, lives: MAX_LIVES, invincibleMs: 0 };
   const THRESHOLDS = [10000, 30000, 50000, 100000],
@@ -361,6 +362,15 @@
     if (!marker) return;
     marker.remainingMs = Math.max(0, marker.remainingMs - ms);
     if (!marker.remainingMs) {
+      const beacon =
+        marker.mode === 'beacon' || (!marker.mode && blinkMode(s) === 'beacon') || marker.noTarget;
+      if (beacon) {
+        const ability = blinkAbility(s);
+        s.blinkCooldownMs = Math.max(
+          s.blinkCooldownMs,
+          marker.cooldownAfterMs || (ability && ability.emptyCooldownMs) || BLINK_EMPTY_COOLDOWN,
+        );
+      }
       s.blinkMarker = null;
       events.push({ type: 'blink-expired' });
       return;
@@ -482,6 +492,8 @@
         : blinkLanding(s, target ? markerPoint(target) : marker);
     s.player.x = destination.x;
     s.player.y = destination.y;
+    if (!assault)
+      s.player.invincibleMs = Math.max(s.player.invincibleMs, BLINK_TELEPORT_INVINCIBILITY);
     let hitTarget = null;
     if (assault && target && targetKind === 'enemy') {
       target.hp -= ability.damage;
@@ -750,6 +762,7 @@
       SHADOW_STRIKE_COOLDOWN,
       SHADOW_STRIKE_DURATION,
       SHADOW_STRIKE_DAMAGE,
+      BLINK_TELEPORT_INVINCIBILITY,
     },
   };
 });
