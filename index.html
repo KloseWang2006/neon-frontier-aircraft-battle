@@ -39,6 +39,12 @@
       border-radius: 12px;
       overflow: hidden;
     }
+    .arena-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
     canvas {
       width: 100%;
       height: 100%;
@@ -99,11 +105,14 @@
       margin-top: 9px;
     }
     .skill-card {
+      --skill-color: #3f9dce;
+      --skill-glow: #58e7ff55;
       margin-top: 12px;
       padding: 10px;
-      border: 1px solid #3f9dce;
+      border: 1px solid var(--skill-color);
       border-radius: 10px;
-      background: #0b284244;
+      background: color-mix(in srgb, var(--skill-color) 10%, #0b102d);
+      box-shadow: 0 0 14px var(--skill-glow);
     }
     .skill-meter {
       height: 8px;
@@ -120,13 +129,23 @@
       box-shadow: 0 0 12px #58e7ff;
       transition: width 0.15s;
     }
-    .shockwave-ready {
-      color: #72f1ff;
-      text-shadow: 0 0 10px #58e7ff;
+    .skill-card .skill-ready {
+      color: var(--skill-color);
+      text-shadow: 0 0 10px var(--skill-color);
     }
     .skill-btn {
       width: 100%;
       margin-top: 8px;
+    }
+    .skill-card .skill-btn {
+      border-color: var(--skill-color);
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--skill-color) 48%, #102344),
+        #172950
+      );
+      color: color-mix(in srgb, var(--skill-color) 62%, #fff);
+      box-shadow: 0 0 12px var(--skill-glow);
     }
     .skill-btn:disabled {
       opacity: 0.5;
@@ -257,6 +276,50 @@
     .fighter-options {
       display: grid;
       gap: 8px;
+    }
+    .fighter-skill-progress {
+      --progress-color: #5ef;
+      --progress-glow: #38d8ff66;
+      display: grid;
+      gap: 7px;
+      padding: 2px 1px;
+    }
+    .fighter-progress-row {
+      display: grid;
+      grid-template-columns: minmax(80px, auto) minmax(58px, 1fr) auto auto;
+      gap: 7px;
+      align-items: center;
+      min-height: 25px;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    .fighter-progress-row b {
+      color: var(--progress-color);
+      text-shadow: 0 0 10px var(--progress-glow);
+    }
+    .fighter-progress-meter {
+      height: 6px;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--progress-color) 58%, #21325d);
+      border-radius: 99px;
+      background: #051429;
+    }
+    .fighter-progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--progress-color) 72%, #fff),
+        var(--progress-color)
+      );
+      box-shadow: 0 0 12px var(--progress-glow);
+      transition: width 120ms linear;
+    }
+    .fighter-progress-row small {
+      color: #aeb9df;
+      font-size: 10px;
+      text-align: right;
     }
     .fighter-choice {
       display: grid;
@@ -475,12 +538,30 @@
     <main class="page">
       <h1>霓虹防线 · 飞机大战</h1>
       <section class="layout">
-        <div class="card">
+        <div class="card arena-panel">
           <div class="arena">
             <canvas id="game" width="480" height="720"></canvas>
             <div class="notice" id="notice"></div>
             <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
           </div>
+          <section class="fighter-skill-progress arena-skill-progress" id="fighterSkillProgress">
+            <div class="fighter-progress-row">
+              <span id="qProgressName">Q · 充能技</span>
+              <div class="fighter-progress-meter">
+                <div class="fighter-progress-fill" id="qProgressFill"></div>
+              </div>
+              <b id="qProgressValue">0 / 100</b>
+              <small id="qProgressStatus">充能中</small>
+            </div>
+            <div class="fighter-progress-row">
+              <span id="eProgressName">E · 普通技</span>
+              <div class="fighter-progress-meter">
+                <div class="fighter-progress-fill" id="eProgressFill"></div>
+              </div>
+              <b id="eProgressValue">可释放</b>
+              <small id="eProgressStatus">可释放</small>
+            </div>
+          </section>
         </div>
         <aside class="side status-side">
           <section class="card">
@@ -496,12 +577,10 @@
             <div class="buff buff-shield">护盾 <b id="shield">未激活</b></div>
             <div class="buff buff-spread">散射弹 <b id="spread">未激活</b></div>
             <div class="buff buff-double">双倍火力 <b id="double">未激活</b></div>
-            <div class="skill-card">
+            <div class="skill-card" id="skillCard">
               <div class="row">
-                <span id="skillName">战机技能</span><b id="skillCharge">0 / 100</b>
+                <span id="skillName">战机技能</span><b id="skillStatus">充能中</b>
               </div>
-              <div class="skill-meter"><div class="skill-meter-fill" id="skillMeter"></div></div>
-              <div class="row"><span>技能状态</span><b id="skillStatus">充能中</b></div>
               <button class="btn skill-btn" id="skillButton" disabled>Q · 充能技 · 技能</button>
             </div>
             <div class="blink-card" id="blinkCard" hidden>

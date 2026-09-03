@@ -40,10 +40,18 @@ function makeDocument() {
       '#spread',
       '#double',
       '#skillName',
-      '#skillCharge',
-      '#skillMeter',
       '#skillStatus',
       '#skillButton',
+      '#skillCard',
+      '#fighterSkillProgress',
+      '#qProgressName',
+      '#qProgressValue',
+      '#qProgressFill',
+      '#qProgressStatus',
+      '#eProgressName',
+      '#eProgressValue',
+      '#eProgressFill',
+      '#eProgressStatus',
       '#blinkCard',
       '#blinkName',
       '#blinkStatus',
@@ -162,12 +170,48 @@ test('renders HUD, dynamic fighter choices, and canvas fallback from a session s
   assert.equal(fake.elements['#score'].textContent, '000250');
   assert.equal(fake.elements['#best'].textContent, '001200');
   assert.match(fake.elements['#skillButton'].textContent, /Q · 充能技/);
+  assert.equal(fake.elements['#skillCard'].style['--skill-color'], '#65e8ff');
+  assert.equal(fake.elements['#qProgressName'].textContent, 'Q · 冲击波');
+  assert.equal(fake.elements['#eProgressName'].textContent, 'E · 潮涌屏障');
   assert.match(fake.elements['#fighterOptions'].innerHTML, /青岚影忍/);
   assert.match(fake.elements['#fighterOptions'].innerHTML, /曜金流星/);
   assert.match(fake.elements['#modal'].innerHTML, /准备起飞/);
   assert.ok(fake.calls.some((call) => call[0] === 'fillRect'));
   fake.fighters[1].fire('click');
   assert.deepEqual(intents.pop(), { type: 'select-fighter', fighterId: 'silver' });
+  page.destroy();
+});
+
+test('renders themed Q charge and E lifecycle progress for every fighter', () => {
+  const fake = makeDocument();
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+  });
+  page.render(
+    snapshot({ game: { fighterId: 'azure', skillCharge: 55, shieldSkillCooldownMs: 15000 } }),
+  );
+  assert.equal(fake.elements['#qProgressFill'].style.width, '55%');
+  assert.equal(fake.elements['#eProgressFill'].style.width, '50%');
+  assert.match(fake.elements['#eProgressStatus'].textContent, /冷却 15.0s/);
+  page.render(snapshot({ game: { fighterId: 'silver', blinkCooldownMs: 7500 } }));
+  assert.equal(fake.elements['#skillCard'].style['--skill-color'], '#d8e4f0');
+  assert.equal(fake.elements['#eProgressName'].textContent, 'E · 瞬闪突袭');
+  assert.equal(fake.elements['#eProgressFill'].style.width, '50%');
+  page.render(
+    snapshot({ game: { fighterId: 'green', shadowStrikes: [{ remainingMs: 225, totalMs: 450 }] } }),
+  );
+  assert.equal(fake.elements['#skillCard'].style['--skill-color'], '#75ff9e');
+  assert.equal(fake.elements['#eProgressName'].textContent, 'E · 影刃双袭');
+  assert.equal(fake.elements['#eProgressFill'].style.width, '50%');
+  page.render(
+    snapshot({ game: { fighterId: 'yellow', blinkMarker: { remainingMs: 2500, locked: true } } }),
+  );
+  assert.equal(fake.elements['#skillCard'].style['--skill-color'], '#ffe85b');
+  assert.equal(fake.elements['#eProgressName'].textContent, 'E · 星煌跃迁');
+  assert.equal(fake.elements['#eProgressFill'].style.width, '50%');
+  assert.match(fake.elements['#eProgressStatus'].textContent, /二段窗口/);
   page.destroy();
 });
 

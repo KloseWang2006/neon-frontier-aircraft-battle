@@ -37,11 +37,23 @@ test('loads the healing sprite and draws its successful-pickup feedback', () => 
 });
 
 test('exposes fighter selection, dynamic skill status, Q activation, and both skill effects', () => {
-  for (const selector of ['.skill-meter', '.skill-meter-fill', '.shockwave-ready'])
+  for (const selector of [
+    '.fighter-skill-progress',
+    '.fighter-progress-meter',
+    '.fighter-progress-fill',
+    '.skill-ready',
+  ])
     assert.match(compactPage, new RegExp(selector.replace('.', '\\.') + '[^}]*'));
   assert.match(compactPage, /<script src="fighter-catalog\.js"><\/script>/);
   assert.match(compactPage, /<script src="page-presentation\.js"><\/script>/);
   assert.match(compactPage, /id="fighterOptions"/);
+  assert.match(compactPage, /id="fighterSkillProgress"/);
+  assert.match(compactPage, /id="qProgressFill"/);
+  assert.match(compactPage, /id="eProgressFill"/);
+  assert.match(
+    compactPage,
+    /\.fighter-progress-row\s*\{[^}]*grid-template-columns:\s*minmax\(80px,\s*auto\)\s*minmax\(58px,\s*1fr\)\s*auto\s*auto/,
+  );
   assert.match(compactPage, /PagePresentation\.create\(/);
   assert.match(compactPresentation, /functionrenderFighterOptions\(\)/);
   assert.match(compactPresentation, /catalog\.list\(\)/);
@@ -62,6 +74,8 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
     true,
   );
   assert.match(compactPage, /id="skillButton"/);
+  assert.match(compactPage, /id="skillCard"/);
+  assert.match(compactPage, /\.skill-card\s*\{[^}]*--skill-color:/);
   assert.match(compactPage, /id="guideBtn"/);
   assert.match(compactPage, /id="soundBtn"/);
   assert.match(compactPage, /<script src="game-audio\.js"><\/script>/);
@@ -70,6 +84,9 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPresentation, /localOverlay==='guide'/);
   assert.match(compactPresentation, /skillCharge/);
   assert.match(compactPresentation, /skillCooldownMs/);
+  assert.match(compactPresentation, /functionsetSkillCardTheme/);
+  assert.match(compactPresentation, /functionrenderFighterSkillProgress/);
+  assert.match(compactPresentation, /functionutilityProgress/);
   assert.match(compactPage, /event\.key === 'q' \|\| event\.key === 'Q'/);
   assert.match(compactPresentation, /functiondrawShockwave\(state,fighter\)/);
   assert.match(compactPresentation, /state\.shockwaveFlashMs<=0/);
@@ -102,6 +119,13 @@ test('uses a desktop action column for fighter selection, run controls, and move
       compactPage.indexOf('class="side action-side"'),
   );
   assert.ok(compactPage.indexOf('class="side action-side"') < compactPage.indexOf('移动与射击'));
+  assert.ok(
+    compactPage.indexOf('class="arena-panel"') < compactPage.indexOf('id="fighterSkillProgress"'),
+  );
+  assert.ok(
+    compactPage.indexOf('id="fighterSkillProgress"') <
+      compactPage.indexOf('class="side status-side"'),
+  );
   assert.match(compactPage, /\.guide-btn\s*\{[^}]*width:\s*100%[^}]*margin-top:\s*8px/);
 });
 

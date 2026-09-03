@@ -124,8 +124,6 @@
         if (item.parentElement) item.parentElement.className = 'buff buff-' + id;
       }
       $('#skillName').textContent = fighter.skillName;
-      $('#skillCharge').textContent = state.skillCharge + ' / 100';
-      $('#skillMeter').style.width = (state.skillCharge / 100) * 100 + '%';
       const skillStatus = $('#skillStatus');
       skillStatus.textContent =
         activeMs > 0
@@ -136,10 +134,12 @@
               ? '冷却 ' + (state.skillCooldownMs / 1000).toFixed(1) + 's'
               : '充能中';
       skillStatus.className =
-        activeMs > 0 ? fighter.visual.statusClass : skillReady ? 'shockwave-ready' : '';
+        activeMs > 0 ? fighter.visual.statusClass : skillReady ? 'skill-ready' : '';
       const skillButton = $('#skillButton');
       skillButton.textContent = 'Q · 充能技 · ' + fighter.skillName;
       skillButton.disabled = !skillReady;
+      setSkillCardTheme($('#skillCard'), fighter);
+      renderFighterSkillProgress(state, fighter, activeMs, skillReady);
       const guideButton = $('#guideBtn'),
         canOpenGuide = state.status === 'ready' || state.status === 'paused';
       if (guideButton) {
@@ -262,6 +262,108 @@
       });
       $('#notice').textContent = view.notice || '';
       renderRank(snapshot.board);
+    }
+
+    function setProgressTheme(element, fighter) {
+      if (!element) return;
+      setCssVariable(element, '--progress-color', fighter.selection.border);
+      const glow = fighter.selection.glow || fighter.selection.border + '66';
+      setCssVariable(element, '--progress-glow', glow);
+    }
+
+    function setCssVariable(element, name, value) {
+      if (!element) return;
+      element.style.setProperty
+        ? element.style.setProperty(name, value)
+        : (element.style[name] = value);
+    }
+
+    function setSkillCardTheme(element, fighter) {
+      setCssVariable(element, '--skill-color', fighter.selection.border);
+      setCssVariable(
+        element,
+        '--skill-glow',
+        fighter.selection.glow || fighter.selection.border + '66',
+      );
+    }
+
+    function utilityProgress(state, fighter) {
+      const utility = fighter.utility;
+      if (utility.kind === 'shield') {
+        if (state.shieldSkillMs > 0)
+          return {
+            value: '屏障中',
+            status: '持续 ' + (state.shieldSkillMs / 1000).toFixed(1) + 's',
+            ratio: state.shieldSkillMs / utility.durationMs,
+          };
+        if (state.shieldSkillCooldownMs > 0)
+          return {
+            value: '冷却',
+            status: '冷却 ' + (state.shieldSkillCooldownMs / 1000).toFixed(1) + 's',
+            ratio: 1 - state.shieldSkillCooldownMs / utility.cooldownMs,
+          };
+        return { value: '可释放', status: '潮涌屏障已就绪', ratio: 1 };
+      }
+      if (utility.kind === 'shadow-strike') {
+        if (state.shadowStrikes && state.shadowStrikes.length) {
+          const remaining = Math.max(...state.shadowStrikes.map((strike) => strike.remainingMs));
+          return {
+            value: '影刃出击',
+            status: '双影正在突袭',
+            ratio: remaining / utility.durationMs,
+          };
+        }
+        if (state.shadowStrikeCooldownMs > 0)
+          return {
+            value: '冷却',
+            status: '冷却 ' + (state.shadowStrikeCooldownMs / 1000).toFixed(1) + 's',
+            ratio: 1 - state.shadowStrikeCooldownMs / utility.cooldownMs,
+          };
+        return { value: '可释放', status: '影刃双袭已就绪', ratio: 1 };
+      }
+      const marker = state.blinkMarker;
+      if (marker) {
+        const assault = utility.mode === 'assault';
+        const readyToBlink =
+          marker.locked &&
+          (!assault || marker.inRange || marker.targetKind === 'boss' || marker.lost);
+        return {
+          value: readyToBlink ? '可二段' : assault ? '追踪中' : '已部署',
+          status: readyToBlink
+            ? '二段窗口 ' + (marker.remainingMs / 1000).toFixed(1) + 's'
+            : (assault ? '锁定目标中 ' : '标记存在 ') +
+              (marker.remainingMs / 1000).toFixed(1) +
+              's',
+          ratio: marker.remainingMs / utility.windowMs,
+        };
+      }
+      if (state.blinkCooldownMs > 0)
+        return {
+          value: '冷却',
+          status: '冷却 ' + (state.blinkCooldownMs / 1000).toFixed(1) + 's',
+          ratio: 1 - state.blinkCooldownMs / (utility.cooldownMs || utility.trackedCooldownMs),
+        };
+      return { value: '可释放', status: utility.name + '已就绪', ratio: 1 };
+    }
+
+    function renderFighterSkillProgress(state, fighter, activeMs, skillReady) {
+      setProgressTheme($('#fighterSkillProgress'), fighter);
+      $('#qProgressName').textContent = 'Q · ' + fighter.skillName;
+      $('#qProgressValue').textContent = state.skillCharge + ' / 100';
+      $('#qProgressFill').style.width = Math.min(100, state.skillCharge) + '%';
+      $('#qProgressStatus').textContent =
+        activeMs > 0
+          ? '生效 ' + (activeMs / 1000).toFixed(1) + 's'
+          : skillReady
+            ? '可释放'
+            : state.skillCooldownMs > 0
+              ? '冷却 ' + (state.skillCooldownMs / 1000).toFixed(1) + 's'
+              : '充能中';
+      const progress = utilityProgress(state, fighter);
+      $('#eProgressName').textContent = 'E · ' + fighter.utility.name;
+      $('#eProgressValue').textContent = progress.value;
+      $('#eProgressFill').style.width = Math.max(0, Math.min(1, progress.ratio)) * 100 + '%';
+      $('#eProgressStatus').textContent = progress.status;
     }
 
     function sprite(image, x, y, w, h, color) {
