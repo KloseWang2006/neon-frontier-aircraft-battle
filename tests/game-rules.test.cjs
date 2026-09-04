@@ -259,6 +259,18 @@ test('consumes an enemy bullet once on collision', () => {
   assert.equal(s.player.lives, 2);
   assert.equal(s.enemyBullets.length, 0);
 });
+test('grants one second of regular hit protection before the next damage', () => {
+  const bullet = { x: 235, y: 650, w: 8, h: 14, vx: 0, vy: 0 };
+  let r = run(GameRules.create({ enemyBullets: [bullet] }), { dt: 0 });
+  assert.equal(r.state.player.lives, 2);
+  assert.equal(r.state.player.invincibleMs, 1000);
+  r = run({ ...r.state, enemyBullets: [bullet] }, { dt: 999 });
+  assert.equal(r.state.player.lives, 2);
+  assert.equal(r.state.player.invincibleMs, 1);
+  r = run({ ...r.state, enemyBullets: [bullet] }, { dt: 1 });
+  assert.equal(r.state.player.lives, 1);
+  assert.equal(r.state.player.invincibleMs, 1000);
+});
 test('emits one-frame audio events for volleys, kills, damage, and powerups', () => {
   const r = run(
     GameRules.create({
@@ -287,10 +299,97 @@ test('spawns all three enemy kinds from deterministic rolls', () => {
     [0.6, 'fast'],
     [0.9, 'elite'],
   ]) {
-    let s = GameRules.create({ score: 500, spawnClock: 700 });
+    let s = GameRules.create({ score: 500, spawnClock: 900 });
     s = run(s, { dt: 0, random: () => roll }).state;
     assert.equal(s.enemies[0].kind, kind);
   }
+});
+test('applies the documented score bands to regular enemy spawns and volleys', () => {
+  const bands = [
+    {
+      score: 500,
+      triggered: [],
+      spawnInterval: 900,
+      speeds: [85, 135, 62],
+      fireInterval: 1100,
+      bulletSpeed: 205,
+    },
+    {
+      score: 12000,
+      triggered: [10000],
+      spawnInterval: 700,
+      speeds: [95, 155, 68],
+      fireInterval: 900,
+      bulletSpeed: 235,
+    },
+    {
+      score: 32000,
+      triggered: [10000, 30000],
+      spawnInterval: 650,
+      speeds: [102, 167, 74],
+      fireInterval: 825,
+      bulletSpeed: 250,
+    },
+    {
+      score: 52000,
+      triggered: [10000, 30000, 50000],
+      spawnInterval: 600,
+      speeds: [110, 180, 80],
+      fireInterval: 750,
+      bulletSpeed: 260,
+    },
+  ];
+  for (const band of bands) {
+    for (const [roll, expectedSpeed] of [
+      [0.2, band.speeds[0]],
+      [0.6, band.speeds[1]],
+      [0.9, band.speeds[2]],
+    ]) {
+      const spawned = run(GameRules.create({ ...band, spawnClock: band.spawnInterval }), {
+        dt: 0,
+        random: () => roll,
+      }).state;
+      assert.equal(spawned.enemies[0].speed, expectedSpeed);
+    }
+    const fired = run(
+      GameRules.create({
+        ...band,
+        enemyFireClock: band.fireInterval,
+        enemies: [
+          { kind: 'normal', id: 1, x: 210, y: 100, w: 38, h: 38, hp: 1, score: 100, speed: 0 },
+        ],
+      }),
+      { dt: 0, random: () => 0.2 },
+    ).state;
+    assert.equal(fired.enemyBullets[0].vy, band.bulletSpeed);
+  }
+});
+test('keeps regular enemy spawning and firing paused during a Boss battle', () => {
+  const s = GameRules.create({
+    score: 12000,
+    triggered: [10000],
+    spawnClock: 9999,
+    enemyFireClock: 9999,
+    boss: {
+      stage: 1,
+      trigger: 10000,
+      x: 160,
+      y: 65,
+      w: 160,
+      h: 120,
+      hp: 105,
+      maxHp: 105,
+      attackClock: 0,
+      pattern: 0,
+      phase: 0,
+    },
+  });
+  const r = run(s, { dt: 0 });
+  assert.equal(r.state.enemies.length, 0);
+  assert.equal(
+    r.events.some((event) => event.type === 'enemy-volley'),
+    false,
+  );
 });
 test('uses the documented four powerup drop ranges', () => {
   for (const [roll, kind] of [
@@ -759,7 +858,7 @@ test('曜金流星跃迁无敌 0.3 秒，期间不会被敌弹或撞机伤害', 
     },
     { dt: 16 },
   );
-  assert.equal(r.state.player.invincibleMs, 750);
+  assert.equal(r.state.player.invincibleMs, 1000);
   assert.equal(r.state.player.lives, 2);
 });
 

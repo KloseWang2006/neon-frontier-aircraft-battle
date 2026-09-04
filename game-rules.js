@@ -31,11 +31,42 @@
     SHADOW_STRIKE_COOLDOWN = FighterCatalog.constants.shadowStrikeCooldown,
     SHADOW_STRIKE_DURATION = FighterCatalog.constants.shadowStrikeDuration,
     SHADOW_STRIKE_DAMAGE = FighterCatalog.constants.shadowStrikeDamage,
-    BLINK_TELEPORT_INVINCIBILITY = 300;
+    BLINK_TELEPORT_INVINCIBILITY = 300,
+    PLAYER_HIT_INVINCIBILITY = 1000;
   const FIGHTERS = FighterCatalog.fighters;
   const PLAYER = { x: 210, y: 630, w: 60, h: 54, lives: MAX_LIVES, invincibleMs: 0 };
   const THRESHOLDS = [10000, 30000, 50000, 100000],
     BOSS_HP = [105, 170, 245, 330];
+  const DIFFICULTY_BANDS = Object.freeze([
+    Object.freeze({
+      fromScore: 0,
+      spawnInterval: 900,
+      speeds: Object.freeze({ normal: 85, fast: 135, elite: 62 }),
+      enemyFireInterval: 1100,
+      enemyBulletSpeed: 205,
+    }),
+    Object.freeze({
+      fromScore: 10000,
+      spawnInterval: 700,
+      speeds: Object.freeze({ normal: 95, fast: 155, elite: 68 }),
+      enemyFireInterval: 900,
+      enemyBulletSpeed: 235,
+    }),
+    Object.freeze({
+      fromScore: 30000,
+      spawnInterval: 650,
+      speeds: Object.freeze({ normal: 102, fast: 167, elite: 74 }),
+      enemyFireInterval: 825,
+      enemyBulletSpeed: 250,
+    }),
+    Object.freeze({
+      fromScore: 50000,
+      spawnInterval: 600,
+      speeds: Object.freeze({ normal: 110, fast: 180, elite: 80 }),
+      enemyFireInterval: 750,
+      enemyBulletSpeed: 260,
+    }),
+  ]);
   const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   const clone = (s) => ({
     ...s,
@@ -113,21 +144,25 @@
     };
   }
 
-  function enemy(kind, id, x) {
+  function difficultyForScore(score) {
+    return [...DIFFICULTY_BANDS].reverse().find((band) => score >= band.fromScore);
+  }
+
+  function enemy(kind, id, x, difficulty) {
     const q =
       kind === 'elite'
-        ? { w: 58, h: 52, hp: 3, score: 350, speed: 68 }
+        ? { w: 58, h: 52, hp: 3, score: 350, speed: difficulty.speeds.elite }
         : kind === 'fast'
-          ? { w: 30, h: 30, hp: 1, score: 150, speed: 155 }
-          : { w: 38, h: 38, hp: 1, score: 100, speed: 95 };
+          ? { w: 30, h: 30, hp: 1, score: 150, speed: difficulty.speeds.fast }
+          : { w: 38, h: 38, hp: 1, score: 100, speed: difficulty.speeds.normal };
     return { kind, id, x, y: -q.h, ...q, phase: 0 };
   }
 
-  function spawn(s, random) {
+  function spawn(s, random, difficulty) {
     const roll = random(),
       kind = roll > 0.82 ? 'elite' : roll > 0.55 ? 'fast' : 'normal',
       w = kind === 'elite' ? 58 : kind === 'fast' ? 30 : 38;
-    s.enemies.push(enemy(kind, s.nextId++, 24 + random() * (W - w - 48)));
+    s.enemies.push(enemy(kind, s.nextId++, 24 + random() * (W - w - 48), difficulty));
   }
 
   function powerupKind(r) {
@@ -209,7 +244,7 @@
       return;
     }
     s.player.lives--;
-    s.player.invincibleMs = 750;
+    s.player.invincibleMs = PLAYER_HIT_INVINCIBILITY;
     events.push({ type: 'player-hit' });
     if (s.player.lives <= 0) s.status = 'over';
   }
@@ -595,10 +630,11 @@
         };
         events.push({ type: 'boss-started', stage: i + 1 });
       } else {
+        const difficulty = difficultyForScore(s.score);
         s.spawnClock += ms;
-        if (s.spawnClock >= 700) {
+        if (s.spawnClock >= difficulty.spawnInterval) {
           s.spawnClock = 0;
-          spawn(s, random);
+          spawn(s, random, difficulty);
         }
         s.enemies = s.enemies.map((e) => {
           const phase = (e.phase || 0) + ms / 300;
@@ -610,7 +646,11 @@
           };
         });
         s.enemyFireClock += ms;
-        if (s.score >= 300 && s.enemies.length && s.enemyFireClock >= 900) {
+        if (
+          s.score >= 300 &&
+          s.enemies.length &&
+          s.enemyFireClock >= difficulty.enemyFireInterval
+        ) {
           s.enemyFireClock = 0;
           const e = s.enemies[Math.floor(random() * s.enemies.length)],
             cx = e.x + e.w / 2;
@@ -620,7 +660,7 @@
             w: 8,
             h: 14,
             vx: (s.player.x + 30 - cx) * 0.28,
-            vy: 235,
+            vy: difficulty.enemyBulletSpeed,
           });
           events.push({ type: 'enemy-volley' });
         }
@@ -763,6 +803,8 @@
       SHADOW_STRIKE_DURATION,
       SHADOW_STRIKE_DAMAGE,
       BLINK_TELEPORT_INVINCIBILITY,
+      PLAYER_HIT_INVINCIBILITY,
+      DIFFICULTY_BANDS,
     },
   };
 });
