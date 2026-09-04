@@ -82,6 +82,15 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPage, /\.sound-btn\s*\{[^}]*width:\s*100%/);
   assert.match(compactPresentation, /functionguideMarkup\(\)/);
   assert.match(compactPresentation, /localOverlay==='guide'/);
+  assert.match(compactPresentation, /constisControlsLocked=\(\)=>localOverlay==='guide'/);
+  assert.match(compactPresentation, /isControlsLocked,/);
+  assert.match(compactPage, /presentation\.isControlsLocked\(\)/);
+  assert.match(
+    compactPage,
+    /\.btn\.guide-control-locked,\s*\.btn\.main\.guide-control-locked\s*\{/,
+  );
+  assert.match(compactPresentation, /说明阅读中/);
+  assert.match(compactPresentation, /操作已锁定/);
   assert.match(compactPresentation, /skillCharge/);
   assert.match(compactPresentation, /skillCooldownMs/);
   assert.match(compactPresentation, /functionsetSkillCardTheme/);

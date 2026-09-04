@@ -173,6 +173,17 @@
       background: linear-gradient(135deg, #67e8ff, #7788ff);
       color: #071021;
     }
+    .btn.guide-control-locked,
+    .btn.main.guide-control-locked {
+      background: linear-gradient(135deg, #202b46, #151d34);
+      border-color: #566584;
+      color: #9aa8c6;
+      box-shadow: none;
+      cursor: not-allowed;
+      filter: grayscale(0.75);
+      opacity: 0.68;
+      text-shadow: none;
+    }
     .pad {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -662,6 +673,13 @@
       }
       function dispatch(intent) {
         audio.unlock();
+        if (
+          presentation.isControlsLocked() &&
+          (intent.type === 'restart' || intent.type === 'toggle-pause')
+        ) {
+          render();
+          return;
+        }
         const wasStatus = session.game.status;
         if (intent.type === 'start') session = RunSession.start(session);
         if (intent.type === 'restart') session = RunSession.restart(session);

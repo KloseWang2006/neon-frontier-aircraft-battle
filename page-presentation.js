@@ -40,6 +40,22 @@
     const emit = (intent) => {
       if (typeof onIntent === 'function') onIntent(intent);
     };
+    const isControlsLocked = () => localOverlay === 'guide';
+    const renderControlLock = () => {
+      const locked = isControlsLocked();
+      const labels = {
+        '#pause': locked ? '说明阅读中' : '暂停',
+        '#restart': locked ? '操作已锁定' : '重新开始',
+      };
+      for (const selector of ['#pause', '#restart']) {
+        const button = $(selector);
+        if (!button) continue;
+        button.disabled = locked;
+        button.title = locked ? '请先关闭游戏说明' : '';
+        button.textContent = labels[selector];
+        button.classList.toggle('guide-control-locked', locked);
+      }
+    };
     const bind = (element, type, listener) => {
       if (!element) return;
       element.addEventListener(type, listener);
@@ -142,6 +158,7 @@
       renderFighterSkillProgress(state, fighter, activeMs, skillReady);
       const guideButton = $('#guideBtn'),
         canOpenGuide = state.status === 'ready' || state.status === 'paused';
+      renderControlLock();
       if (guideButton) {
         guideButton.disabled = !canOpenGuide;
         guideButton.title = canOpenGuide ? '查看完整游戏规则' : '请先暂停再查看说明';
@@ -737,6 +754,7 @@
       const view = snapshot.view;
       if (view.overlay === 'ended') {
         localOverlay = null;
+        renderControlLock();
         const key = `ended:${view.endReason}:${snapshot.game.score}:${snapshot.game.elapsedMs}:${view.canRegister}`;
         showModal(
           key,
@@ -754,6 +772,7 @@
         showModal('guide', guideMarkup(), () =>
           bind($('#closeGuide'), 'click', () => {
             localOverlay = null;
+            renderControlLock();
             renderModal(current);
           }),
         );
@@ -795,8 +814,12 @@
     }
 
     renderFighterOptions();
-    bind($('#pause'), 'click', () => emit({ type: 'toggle-pause' }));
-    bind($('#restart'), 'click', () => emit({ type: 'restart' }));
+    bind($('#pause'), 'click', () => {
+      if (!isControlsLocked()) emit({ type: 'toggle-pause' });
+    });
+    bind($('#restart'), 'click', () => {
+      if (!isControlsLocked()) emit({ type: 'restart' });
+    });
     bind($('#skillButton'), 'click', () => emit({ type: 'skill' }));
     bind($('#blinkButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#shieldButton'), 'click', () => emit({ type: 'blink' }));
@@ -804,6 +827,7 @@
     bind($('#guideBtn'), 'click', () => {
       if (!current || (current.game.status !== 'ready' && current.game.status !== 'paused')) return;
       localOverlay = 'guide';
+      renderControlLock();
       renderModal(current);
     });
     bind($('#soundBtn'), 'click', () => emit({ type: 'toggle-sound' }));
@@ -824,6 +848,7 @@
     });
     return {
       render,
+      isControlsLocked,
       destroy() {
         listeners.splice(0).forEach((remove) => remove());
       },

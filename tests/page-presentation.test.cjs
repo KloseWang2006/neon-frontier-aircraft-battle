@@ -401,15 +401,23 @@ test('turns overlays and touch controls into intents while keeping ranking local
 });
 
 test('opens the complete guide only when ready or paused and restores the original overlay on close', () => {
-  const fake = makeDocument();
+  const fake = makeDocument(),
+    intents = [];
   const page = Presentation.create({
     document: fake.document,
     canvas: fake.canvas,
     catalog: Catalog,
+    onIntent: (intent) => intents.push(intent),
   });
   page.render(snapshot());
   assert.equal(fake.elements['#guideBtn'].disabled, false);
   fake.elements['#guideBtn'].fire('click');
+  assert.equal(page.isControlsLocked(), true);
+  assert.equal(fake.elements['#pause'].disabled, true);
+  assert.equal(fake.elements['#restart'].disabled, true);
+  assert.equal(fake.elements['#pause'].textContent, '说明阅读中');
+  assert.equal(fake.elements['#restart'].textContent, '操作已锁定');
+  assert.match(fake.elements['#pause'].className, /guide-control-locked/);
   assert.match(fake.elements['#modal'].innerHTML, /游戏说明/);
   assert.match(fake.elements['#modal'].innerHTML, /蔚蓝风暴/);
   assert.match(fake.elements['#modal'].innerHTML, /银翼杀手/);
@@ -417,6 +425,11 @@ test('opens the complete guide only when ready or paused and restores the origin
   assert.match(fake.elements['#modal'].innerHTML, /曜金流星/);
   assert.match(fake.elements['#modal'].innerHTML, /护盾 2.5%/);
   fake.dynamic['#closeGuide'].fire('click');
+  assert.equal(page.isControlsLocked(), false);
+  assert.equal(fake.elements['#pause'].disabled, false);
+  assert.equal(fake.elements['#restart'].disabled, false);
+  assert.equal(fake.elements['#pause'].textContent, '暂停');
+  assert.equal(fake.elements['#restart'].textContent, '重新开始');
   assert.match(fake.elements['#modal'].innerHTML, /准备起飞/);
   page.render(snapshot({ game: { status: 'running' }, view: { overlay: 'none' } }));
   assert.equal(fake.elements['#guideBtn'].disabled, true);
@@ -425,8 +438,13 @@ test('opens the complete guide only when ready or paused and restores the origin
   page.render(snapshot({ game: { status: 'paused' }, view: { overlay: 'none' } }));
   assert.equal(fake.elements['#guideBtn'].disabled, false);
   fake.elements['#guideBtn'].fire('click');
+  assert.equal(page.isControlsLocked(), true);
+  fake.elements['#pause'].fire('click');
+  fake.elements['#restart'].fire('click');
+  assert.deepEqual(intents, []);
   assert.match(fake.elements['#modal'].innerHTML, /Boss、通关与排行/);
   fake.dynamic['#closeGuide'].fire('click');
+  assert.equal(page.isControlsLocked(), false);
   assert.equal(fake.elements['#overlay'].hidden, true);
   page.destroy();
 });
