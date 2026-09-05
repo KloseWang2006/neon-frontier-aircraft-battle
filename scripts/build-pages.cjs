@@ -22,4 +22,4 @@ for (const file of runtimeFiles) {
 
 cpSync(join(root, 'assets'), join(output, 'assets'), { recursive: true });
 
-console.log(`Cloudflare 静态产物已生成：${runtimeFiles.length} 个运行文件和 assets/`);
+console.log(`Cloudflare Pages 产物已生成：${runtimeFiles.length} 个运行文件和 assets/`);
