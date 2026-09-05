@@ -140,3 +140,23 @@ npm run check
 ```
 
 该命令会检查格式、生产 JavaScript 语法，以及固定输入下的规则、会话、存储和呈现测试。开发依赖仅用于验证，不会影响双击 `index.html` 的离线游玩。
+
+## Cloudflare 部署
+
+Cloudflare Workers 部署使用专用的 `dist/` 静态产物目录，不会上传 `node_modules`、测试或宣传片工程。首次部署前，在 Cloudflare 项目设置中填写：
+
+```text
+Build command: npm run build:cloudflare
+Deploy command: npx wrangler deploy
+Output directory: dist
+```
+
+本地可用以下命令生成与部署同样的静态产物：
+
+```bash
+npm install
+npm run build:cloudflare
+npm run deploy:cloudflare
+```
+
+`dist/` 和 Wrangler 的临时文件均为构建产物，不会提交到 Git。游戏本体仍然可直接双击根目录的 `index.html` 离线游玩。
