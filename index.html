@@ -268,6 +268,142 @@
         grid-template-columns: 1fr 1fr;
       }
     }
+    .mobile-hud,
+    .mobile-combat-dock {
+      display: none;
+    }
+    @media (max-width: 780px) and (orientation: portrait) {
+      body {
+        overscroll-behavior-y: contain;
+      }
+      .page {
+        width: 100%;
+        min-height: 100dvh;
+        padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+          max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(22px, 7vw, 30px);
+      }
+      .layout {
+        display: block;
+      }
+      .status-side,
+      .action-side {
+        display: none;
+      }
+      .mobile-hud {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px 10px;
+        align-items: center;
+        margin-bottom: 8px;
+        padding: 8px 10px;
+        border: 1px solid #7189df77;
+        border-radius: 12px;
+        background: #10133de8;
+      }
+      .mobile-hud .mobile-stats {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        min-width: 0;
+        color: #c7d2f4;
+        font-size: 12px;
+      }
+      .mobile-hud strong {
+        color: #fff;
+        font:
+          800 16px Menlo,
+          monospace;
+      }
+      .mobile-hud .mobile-lives {
+        color: #ff71b5;
+        font-size: 17px;
+        text-shadow: 0 0 8px #ff54ae;
+      }
+      .mobile-hud .mobile-time {
+        color: #b9c5ed;
+        font:
+          700 12px Menlo,
+          monospace;
+      }
+      .mobile-menu-btn {
+        min-height: 44px;
+        padding: 0 12px;
+        touch-action: manipulation;
+      }
+      .arena-panel {
+        gap: 8px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .arena {
+        width: min(calc(100vw - 24px), 366px);
+        margin: 0 auto;
+      }
+      canvas {
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .arena-skill-progress {
+        display: none;
+      }
+      .mobile-combat-dock {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: min(calc(100vw - 24px), 366px);
+        margin: 0 auto;
+        padding-bottom: max(2px, env(safe-area-inset-bottom));
+      }
+      .mobile-combat-dock .btn {
+        min-height: 52px;
+        padding: 7px;
+        touch-action: manipulation;
+        font-size: 14px;
+      }
+      .mobile-combat-dock .mobile-utility {
+        border-color: var(--mobile-fighter-color, #58e7ff);
+        color: color-mix(in srgb, var(--mobile-fighter-color, #58e7ff) 72%, #fff);
+      }
+      .modal.mobile-menu {
+        width: min(340px, 92%);
+        max-height: 86%;
+        overflow-y: auto;
+        text-align: left;
+      }
+      .mobile-menu-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 12px 0;
+      }
+      .mobile-menu-actions .btn:last-child,
+      .mobile-menu-actions .full {
+        grid-column: 1 / -1;
+      }
+      .mobile-menu-fighters {
+        display: grid;
+        gap: 7px;
+        margin: 10px 0;
+      }
+      .mobile-menu-fighters .fighter-choice {
+        min-height: 56px;
+      }
+    }
+    @media (max-width: 780px) and (orientation: portrait) and (max-height: 720px) {
+      .arena,
+      .mobile-combat-dock {
+        width: min(calc(100vw - 24px), 310px);
+      }
+      .mobile-hud {
+        padding-block: 6px;
+      }
+    }
     @media (max-width: 465px) {
       .side {
         grid-template-columns: 1fr;
@@ -548,6 +684,14 @@
   <body>
     <main class="page">
       <h1>霓虹防线 · 飞机大战</h1>
+      <section class="mobile-hud" aria-label="移动端战况">
+        <div class="mobile-stats">
+          <span>分 <strong id="mobileScore">000000</strong></span>
+          <span class="mobile-lives" id="mobileLives">♥♥♥</span>
+          <span class="mobile-time" id="mobileTimer">00:00.0</span>
+        </div>
+        <button class="btn mobile-menu-btn" id="mobileMenu" type="button">菜单</button>
+      </section>
       <section class="layout">
         <div class="card arena-panel">
           <div class="arena">
@@ -572,6 +716,12 @@
               <b id="eProgressValue">可释放</b>
               <small id="eProgressStatus">可释放</small>
             </div>
+          </section>
+          <section class="mobile-combat-dock" id="mobileCombatDock" aria-label="技能操作">
+            <button class="btn" id="mobileSkillButton" type="button" disabled>Q · 充能技</button>
+            <button class="btn mobile-utility" id="mobileUtilityButton" type="button" disabled>
+              E · 普通技
+            </button>
           </section>
         </div>
         <aside class="side status-side">
@@ -651,9 +801,11 @@
     <script>
       const canvas = document.querySelector('#game'),
         keys = {},
+        touchKeys = {},
         storage = GameStorage.adapter(localStorage);
       let session = RunSession.create({ rules: GameRules, storage }),
-        last = 0;
+        last = 0,
+        touchTarget = null;
       const audio = GameAudio.create({ storage: localStorage });
       const presentation = PagePresentation.create({
         document,
@@ -671,6 +823,30 @@
       function render() {
         presentation.render(snapshot());
       }
+      function clearTouchInput() {
+        touchTarget = null;
+        for (const direction of ['left', 'right', 'up', 'down']) touchKeys[direction] = false;
+      }
+      function updateTouchInput() {
+        if (!touchTarget || session.game.status !== 'running') return;
+        const player = session.game.player,
+          dx = touchTarget.x - (player.x + 30),
+          dy = touchTarget.y - (player.y + 28),
+          deadZone = 12;
+        touchKeys.left = dx < -deadZone;
+        touchKeys.right = dx > deadZone;
+        touchKeys.up = dy < -deadZone;
+        touchKeys.down = dy > deadZone;
+      }
+      function frameInput() {
+        return {
+          ...keys,
+          left: Boolean(keys.left || touchKeys.left),
+          right: Boolean(keys.right || touchKeys.right),
+          up: Boolean(keys.up || touchKeys.up),
+          down: Boolean(keys.down || touchKeys.down),
+        };
+      }
       function dispatch(intent) {
         audio.unlock();
         if (
@@ -681,12 +857,24 @@
           return;
         }
         const wasStatus = session.game.status;
-        if (intent.type === 'start') session = RunSession.start(session);
-        if (intent.type === 'restart') session = RunSession.restart(session);
+        if (intent.type === 'start') {
+          clearTouchInput();
+          session = RunSession.start(session);
+        }
+        if (intent.type === 'restart') {
+          clearTouchInput();
+          session = RunSession.restart(session);
+        }
         if (intent.type === 'toggle-pause') {
           session = RunSession.togglePause(session);
+          if (session.game.status !== 'running') clearTouchInput();
           if (wasStatus === 'running') audio.play('pause');
           if (wasStatus === 'paused') audio.play('resume');
+        }
+        if (intent.type === 'mobile-menu' && session.game.status === 'running') {
+          session = RunSession.togglePause(session);
+          clearTouchInput();
+          audio.play('pause');
         }
         if (intent.type === 'toggle-sound') {
           const enabled = audio.toggle();
@@ -700,6 +888,14 @@
         if (intent.type === 'skill' && session.game.status === 'running') keys.skill = true;
         if (intent.type === 'blink' && session.game.status === 'running') keys.blink = true;
         if (intent.type === 'direction') keys[intent.direction] = intent.pressed;
+        if (intent.type === 'touch-target' && session.game.status === 'running') {
+          touchTarget = {
+            x: Math.max(0, Math.min(480, intent.point.x)),
+            y: Math.max(288, Math.min(666, intent.point.y)),
+          };
+          updateTouchInput();
+        }
+        if (intent.type === 'touch-end') clearTouchInput();
         if (intent.type === 'register') session = RunSession.register(session, intent.id);
         render();
       }
@@ -741,12 +937,14 @@
       document.addEventListener('keyup', (event) => {
         if (keyMap[event.key]) keys[keyMap[event.key]] = false;
       });
+      window.addEventListener('blur', clearTouchInput);
       function loop(now) {
         requestAnimationFrame(loop);
         const dt = Math.min(34, now - last || 16);
         last = now;
         if (session.game.status === 'running') {
-          session = RunSession.advance(session, { dt, input: keys, random: Math.random });
+          updateTouchInput();
+          session = RunSession.advance(session, { dt, input: frameInput(), random: Math.random });
           audio.consume(session.events);
           keys.skill = false;
           keys.blink = false;

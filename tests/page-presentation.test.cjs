@@ -24,8 +24,8 @@ class Element {
   removeEventListener(type, listener) {
     this.listeners[type] = (this.listeners[type] || []).filter((item) => item !== listener);
   }
-  fire(type) {
-    for (const listener of this.listeners[type] || []) listener({ preventDefault() {} });
+  fire(type, event = {}) {
+    for (const listener of this.listeners[type] || []) listener({ preventDefault() {}, ...event });
   }
 }
 function makeDocument() {
@@ -74,6 +74,13 @@ function makeDocument() {
       '#rankBtn',
       '#guideBtn',
       '#soundBtn',
+      '#mobileScore',
+      '#mobileLives',
+      '#mobileTimer',
+      '#mobileMenu',
+      '#mobileCombatDock',
+      '#mobileSkillButton',
+      '#mobileUtilityButton',
     ].map((selector) => [selector, new Element()]),
   );
   const dynamic = {};
@@ -82,7 +89,22 @@ function makeDocument() {
     defaultView: {},
     querySelector(selector) {
       if (elements[selector]) return elements[selector];
-      if (['#go', '#close', '#closeGuide', '#again', '#save', '#pid'].includes(selector))
+      if (
+        [
+          '#go',
+          '#close',
+          '#closeGuide',
+          '#again',
+          '#save',
+          '#pid',
+          '#mobileResume',
+          '#mobileRestart',
+          '#mobileGuide',
+          '#mobileRank',
+          '#mobileSound',
+          '#closeMobileMenu',
+        ].includes(selector)
+      )
         return control(selector);
       return null;
     },
@@ -114,7 +136,13 @@ function makeDocument() {
     },
   );
   const canvas = new Element();
+  canvas.width = 480;
+  canvas.height = 720;
   canvas.getContext = () => context;
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 240, height: 360 });
+  canvas.setPointerCapture = (pointerId) => (canvas.pointerId = pointerId);
+  canvas.hasPointerCapture = (pointerId) => canvas.pointerId === pointerId;
+  canvas.releasePointerCapture = () => (canvas.pointerId = null);
   return { document, canvas, elements, dynamic, directions, fighters, calls };
 }
 const snapshot = ({
@@ -398,6 +426,52 @@ test('turns overlays and touch controls into intents while keeping ranking local
   fake.dynamic['#save'].fire('click');
   fake.dynamic['#again'].fire('click');
   assert.deepEqual(intents.splice(0), [{ type: 'register', id: 'ace' }, { type: 'restart' }]);
+});
+
+test('renders a mobile combat dock and turns canvas dragging into bounded touch intents', () => {
+  const fake = makeDocument(),
+    intents = [];
+  const page = Presentation.create({
+    document: fake.document,
+    canvas: fake.canvas,
+    catalog: Catalog,
+    onIntent: (intent) => intents.push(intent),
+  });
+  page.render(
+    snapshot({ game: { status: 'running', skillCharge: 100 }, view: { overlay: 'none' } }),
+  );
+  assert.equal(fake.elements['#mobileScore'].textContent, '000250');
+  assert.equal(fake.elements['#mobileLives'].textContent, '♥♥♥');
+  assert.match(fake.elements['#mobileSkillButton'].textContent, /冲击波/);
+  assert.equal(fake.elements['#mobileSkillButton'].disabled, false);
+  assert.equal(fake.elements['#mobileUtilityButton'].disabled, false);
+  fake.canvas.fire('pointerdown', {
+    pointerType: 'touch',
+    pointerId: 7,
+    clientX: 120,
+    clientY: 300,
+  });
+  fake.canvas.fire('pointermove', {
+    pointerType: 'touch',
+    pointerId: 7,
+    clientX: 200,
+    clientY: 330,
+  });
+  fake.canvas.fire('pointerup', { pointerType: 'touch', pointerId: 7 });
+  fake.elements['#mobileSkillButton'].fire('click');
+  fake.elements['#mobileUtilityButton'].fire('click');
+  fake.elements['#mobileMenu'].fire('click');
+  assert.deepEqual(intents, [
+    { type: 'touch-target', point: { x: 240, y: 600 } },
+    { type: 'touch-target', point: { x: 400, y: 660 } },
+    { type: 'touch-end' },
+    { type: 'skill' },
+    { type: 'blink' },
+    { type: 'mobile-menu' },
+  ]);
+  assert.equal(fake.canvas.pointerId, null);
+  assert.match(fake.elements['#modal'].innerHTML, /战斗菜单/);
+  page.destroy();
 });
 
 test('opens the complete guide only when ready or paused and restores the original overlay on close', () => {

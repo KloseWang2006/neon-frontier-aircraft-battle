@@ -78,6 +78,9 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPage, /\.skill-card\s*\{[^}]*--skill-color:/);
   assert.match(compactPage, /id="guideBtn"/);
   assert.match(compactPage, /id="soundBtn"/);
+  assert.match(compactPage, /id="mobileMenu"/);
+  assert.match(compactPage, /id="mobileSkillButton"/);
+  assert.match(compactPage, /id="mobileUtilityButton"/);
   assert.match(compactPage, /<script src="game-audio\.js"><\/script>/);
   assert.match(compactPage, /\.sound-btn\s*\{[^}]*width:\s*100%/);
   assert.match(compactPresentation, /functionguideMarkup\(\)/);
@@ -107,6 +110,8 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPage, /RunSession\.selectFighter/);
   assert.match(compactPresentation, /fighter\.visual\.effect\.kind!=='wingmen'/);
   assert.match(compactPresentation, /functiondrawWingmen\(state,fighter\)/);
+  assert.match(compactPresentation, /type:'touch-target'/);
+  assert.match(compactPresentation, /type:'mobile-menu'/);
   assert.match(compactPresentation, /functiondrawHoming\(state,fighter\)/);
   assert.match(compactPresentation, /functiondrawShadowStrikes\(state,fighter\)/);
   assert.match(compactPresentation, /shadowStrikeCooldownMs/);
@@ -136,6 +141,14 @@ test('uses a desktop action column for fighter selection, run controls, and move
       compactPage.indexOf('class="side status-side"'),
   );
   assert.match(compactPage, /\.guide-btn\s*\{[^}]*width:\s*100%[^}]*margin-top:\s*8px/);
+});
+
+test('adds a portrait touch-first combat layout without changing desktop columns', () => {
+  assert.match(compactPage, /@media\s*\(max-width:\s*780px\)\s*and\s*\(orientation:\s*portrait\)/);
+  assert.match(compactPage, /touch-action:\s*none/);
+  assert.match(compactPage, /safe-area-inset-top/);
+  assert.match(compactPage, /\.mobile-combat-dock\s*\{[^}]*grid-template-columns:\s*1fr\s+1fr/);
+  assert.match(compactPage, /\.status-side,\s*\.action-side\s*\{\s*display:\s*none/);
 });
 
 test('stacks the score-registration form and restart action in the end modal', () => {

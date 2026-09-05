@@ -109,7 +109,7 @@
           return `<article class="guide-fighter" style="--guide-color:${fighter.selection.border}"><h4>${fighter.name}</h4><p>基础：移动速度 ${fighter.speed} · 普通子弹伤害 ${fighter.bulletDamage}。</p><p><b>Q · ${fighter.skillName}</b></p><ul>${fighter.guide.q.map((item) => `<li>${item}</li>`).join('')}</ul><p><b>E · ${utility.name}</b></p><ul>${fighter.guide.e.map((item) => `<li>${item}</li>`).join('')}</ul></article>`;
         })
         .join('');
-      return `<h2>游戏说明</h2><h3>操作与基础规则</h3><ul><li>按住方向键或 W/A/S/D 在战场下方 60% 区域四方向移动；武器自动向上射击。</li><li>Q 是充能技：击毁普通、快速、精英敌机分别获得 2 / 3 / 5 能量；满 100 能量并结束 18 秒冷却后可释放。</li><li>E 是当前战机的独立普通技；Space 或右侧按钮可暂停 / 继续。初始 3 点生命，敌弹或撞机造成 1 次伤害，受击后有 1 秒无敌保护且命中敌弹立即消失。</li><li>普通、快速、精英敌机随机出现；达到 300 分后敌机会开始发射敌弹。</li></ul><h3>普通敌军难度</h3><ul><li>0–1万分：每 900ms 生成，敌弹每 1100ms 发射，敌机速度为 85 / 135 / 62。</li><li>1–3万分保持标准档；3–5万分小幅提高；5万分后进入高压档。Boss 战期间暂停普通敌军，击败 Boss 后按当前分数恢复。</li></ul><h3>强化包</h3><ul><li>击毁敌机有合计 10% 概率掉落：护盾 2.5%、散射弹 3%、双倍火力 3.5%、治疗药水 1%。</li><li>护盾抵挡一次命中；散射弹每次发射三发；双倍火力将间隔从 180ms 缩短到 90ms；前三者持续 8 秒。</li><li>治疗药水立即恢复 1 格生命，满血时仍会消耗但没有效果。</li></ul><h3>Boss、通关与排行</h3><ul><li>首次达到 10,000、30,000、50,000、100,000 分时依次触发 Boss 战，并清空普通敌军。Boss 横移并交替使用扇形与三连弹幕。</li><li>每次击败 Boss 奖励 2,000 分；击败第一 Boss 获得上榜资格，击败最终 Boss 即通关。</li><li>结束时，获得资格的玩家可登记 ID。成绩只保存在当前浏览器，按分数降序、同分按用时升序保留前 10 条；暂停不计时。</li></ul><h3>战机图鉴</h3>${fighterCards}<button class="btn modal-secondary" id="closeGuide">关闭说明</button>`;
+      return `<h2>游戏说明</h2><h3>操作与基础规则</h3><ul><li>电脑端按住方向键或 W/A/S/D；手机端在战场内拖动手指，均可在战场下方 60% 区域四方向移动；武器自动向上射击。</li><li>Q 是充能技：击毁普通、快速、精英敌机分别获得 2 / 3 / 5 能量；满 100 能量并结束 18 秒冷却后可释放。</li><li>E 是当前战机的独立普通技；Space、右侧按钮或手机技能键可暂停 / 继续。初始 3 点生命，敌弹或撞机造成 1 次伤害，受击后有 1 秒无敌保护且命中敌弹立即消失。</li><li>普通、快速、精英敌机随机出现；达到 300 分后敌机会开始发射敌弹。</li></ul><h3>普通敌军难度</h3><ul><li>0–1万分：每 900ms 生成，敌弹每 1100ms 发射，敌机速度为 85 / 135 / 62。</li><li>1–3万分保持标准档；3–5万分小幅提高；5万分后进入高压档。Boss 战期间暂停普通敌军，击败 Boss 后按当前分数恢复。</li></ul><h3>强化包</h3><ul><li>击毁敌机有合计 10% 概率掉落：护盾 2.5%、散射弹 3%、双倍火力 3.5%、治疗药水 1%。</li><li>护盾抵挡一次命中；散射弹每次发射三发；双倍火力将间隔从 180ms 缩短到 90ms；前三者持续 8 秒。</li><li>治疗药水立即恢复 1 格生命，满血时仍会消耗但没有效果。</li></ul><h3>Boss、通关与排行</h3><ul><li>首次达到 10,000、30,000、50,000、100,000 分时依次触发 Boss 战，并清空普通敌军。Boss 横移并交替使用扇形与三连弹幕。</li><li>每次击败 Boss 奖励 2,000 分；击败第一 Boss 获得上榜资格，击败最终 Boss 即通关。</li><li>结束时，获得资格的玩家可登记 ID。成绩只保存在当前浏览器，按分数降序、同分按用时升序保留前 10 条；暂停不计时。</li></ul><h3>战机图鉴</h3>${fighterCards}<button class="btn modal-secondary" id="closeGuide">关闭说明</button>`;
     }
 
     function renderHud(snapshot) {
@@ -126,6 +126,14 @@
       $('#lives').textContent =
         '♥'.repeat(state.player.lives) + '♡'.repeat(3 - state.player.lives);
       $('#timer').textContent = formatTime(state.elapsedMs);
+      const mobileScore = $('#mobileScore'),
+        mobileLives = $('#mobileLives'),
+        mobileTimer = $('#mobileTimer');
+      if (mobileScore) mobileScore.textContent = pad(state.score);
+      if (mobileLives)
+        mobileLives.textContent =
+          '♥'.repeat(state.player.lives) + '♡'.repeat(3 - state.player.lives);
+      if (mobileTimer) mobileTimer.textContent = formatTime(state.elapsedMs);
       const status = $('#state');
       status.textContent =
         stateName === 'running' ? '火力全开' : stateName === 'paused' ? '已暂停' : '等待起飞';
@@ -168,6 +176,9 @@
         const soundEnabled = snapshot.soundEnabled !== false;
         soundButton.textContent = soundEnabled ? '🔊 音效：开' : '🔇 音效：关';
         soundButton.className = 'btn sound-btn ' + (soundEnabled ? 'sound-on' : 'sound-off');
+        const mobileSoundButton = $('#mobileSound');
+        if (mobileSoundButton)
+          mobileSoundButton.textContent = soundEnabled ? '🔊 音效：开' : '🔇 音效：关';
       }
       const blinkCard = $('#blinkCard'),
         blinkButton = $('#blinkButton'),
@@ -279,6 +290,7 @@
       });
       $('#notice').textContent = view.notice || '';
       renderRank(snapshot.board);
+      renderMobileCombatControls(state, fighter, activeMs, skillReady);
     }
 
     function setProgressTheme(element, fighter) {
@@ -381,6 +393,33 @@
       $('#eProgressValue').textContent = progress.value;
       $('#eProgressFill').style.width = Math.max(0, Math.min(1, progress.ratio)) * 100 + '%';
       $('#eProgressStatus').textContent = progress.status;
+    }
+
+    function renderMobileCombatControls(state, fighter, activeMs, skillReady) {
+      const dock = $('#mobileCombatDock'),
+        skillButton = $('#mobileSkillButton'),
+        utilityButton = $('#mobileUtilityButton');
+      if (!dock || !skillButton || !utilityButton) return;
+      setCssVariable(dock, '--mobile-fighter-color', fighter.selection.border);
+      skillButton.textContent =
+        'Q · ' + fighter.skillName + (activeMs > 0 ? ' · 生效中' : skillReady ? ' · 可释放' : '');
+      skillButton.disabled = !skillReady;
+      const progress = utilityProgress(state, fighter),
+        utilityReady = progress.value === '可释放' || progress.value === '可二段';
+      utilityButton.textContent = 'E · ' + fighter.utility.name + ' · ' + progress.value;
+      utilityButton.disabled = !utilityReady;
+    }
+
+    function mobileMenuMarkup(state, soundEnabled) {
+      const paused = state.status === 'paused';
+      const fighters = catalog
+        .list()
+        .map(
+          (fighter) =>
+            `<button class="fighter-choice${fighter.id === state.fighterId ? ' selected' : ''}" data-mobile-fighter="${fighter.id}" type="button" ${state.status === 'ready' ? '' : 'disabled'} style="--fighter-rotation:${fighter.visual.orientation}deg;--fighter-border:${fighter.selection.border};--fighter-glow:${fighter.selection.glow};--fighter-background:${fighter.selection.background}"><img src="assets/${fighter.visual.spriteFile}" alt="${fighter.selection.label}预览"><span><strong>${fighter.selection.label}</strong><small>${fighter.selection.description}</small></span></button>`,
+        )
+        .join('');
+      return `<h2>战斗菜单</h2><p>${paused ? '已暂停。关闭菜单后需手动继续战斗。' : '准备阶段：可在此预选战机。'}</p><div class="mobile-menu-actions"><button class="btn main" id="mobileResume">${paused ? '继续战斗' : '返回准备'}</button><button class="btn" id="mobileRestart">重新开始</button><button class="btn" id="mobileGuide">游戏说明</button><button class="btn" id="mobileRank">查看排行榜</button><button class="btn full" id="mobileSound">${soundEnabled ? '🔊 音效：开' : '🔇 音效：关'}</button></div><h3>选择战机</h3><p>仅准备阶段可预选，开局后锁定。</p><div class="mobile-menu-fighters">${fighters}</div><button class="btn modal-secondary" id="closeMobileMenu">关闭菜单</button>`;
     }
 
     function sprite(image, x, y, w, h, color) {
@@ -741,7 +780,12 @@
       overlay.hidden = false;
       if (modalKey === key) return;
       modalKey = key;
-      modal.className = key === 'guide' ? 'modal guide-modal' : 'modal';
+      modal.className =
+        key === 'guide'
+          ? 'modal guide-modal'
+          : key === 'mobile-menu'
+            ? 'modal mobile-menu'
+            : 'modal';
       modal.innerHTML = markup;
       bindControls();
     }
@@ -775,6 +819,47 @@
             renderControlLock();
             renderModal(current);
           }),
+        );
+        return;
+      }
+      if (localOverlay === 'mobile-menu') {
+        showModal(
+          'mobile-menu',
+          mobileMenuMarkup(snapshot.game, snapshot.soundEnabled !== false),
+          () => {
+            bind($('#mobileResume'), 'click', () => {
+              localOverlay = null;
+              if (current.game.status === 'paused') emit({ type: 'toggle-pause' });
+              else renderModal(current);
+            });
+            bind($('#mobileRestart'), 'click', () => {
+              localOverlay = null;
+              emit({ type: 'restart' });
+            });
+            bind($('#mobileGuide'), 'click', () => {
+              localOverlay = 'guide';
+              renderModal(current);
+            });
+            bind($('#mobileRank'), 'click', () => {
+              localOverlay = 'rank';
+              renderModal(current);
+            });
+            bind($('#mobileSound'), 'click', () => emit({ type: 'toggle-sound' }));
+            bind($('#closeMobileMenu'), 'click', () => {
+              localOverlay = null;
+              renderModal(current);
+            });
+            const menuModal = $('#modal'),
+              choices =
+                menuModal && menuModal.querySelectorAll
+                  ? menuModal.querySelectorAll('[data-mobile-fighter]')
+                  : [];
+            choices.forEach((button) =>
+              bind(button, 'click', () =>
+                emit({ type: 'select-fighter', fighterId: button.dataset.mobileFighter }),
+              ),
+            );
+          },
         );
         return;
       }
@@ -831,6 +916,14 @@
       renderModal(current);
     });
     bind($('#soundBtn'), 'click', () => emit({ type: 'toggle-sound' }));
+    bind($('#mobileMenu'), 'click', () => {
+      if (!current || current.view.overlay === 'ended' || isControlsLocked()) return;
+      emit({ type: 'mobile-menu' });
+      localOverlay = 'mobile-menu';
+      renderModal(current);
+    });
+    bind($('#mobileSkillButton'), 'click', () => emit({ type: 'skill' }));
+    bind($('#mobileUtilityButton'), 'click', () => emit({ type: 'blink' }));
     bind($('#rankBtn'), 'click', () => {
       localOverlay = 'rank';
       renderModal(current);
@@ -846,6 +939,53 @@
       bind(button, 'pointerleave', off);
       bind(button, 'pointercancel', off);
     });
+    let touchPointerId = null;
+    const touchPoint = (event) => {
+      const rect = canvas.getBoundingClientRect
+          ? canvas.getBoundingClientRect()
+          : { left: 0, top: 0, width: canvas.width, height: canvas.height },
+        width = rect.width || canvas.width,
+        height = rect.height || canvas.height;
+      return {
+        x: Math.max(
+          0,
+          Math.min(canvas.width, ((event.clientX - rect.left) / width) * canvas.width),
+        ),
+        y: Math.max(
+          0,
+          Math.min(canvas.height, ((event.clientY - rect.top) / height) * canvas.height),
+        ),
+      };
+    };
+    const canTouchFly = () =>
+      current && current.game.status === 'running' && !localOverlay && !isControlsLocked();
+    bind(canvas, 'pointerdown', (event) => {
+      if (event.pointerType !== 'touch' || !canTouchFly()) return;
+      event.preventDefault();
+      touchPointerId = event.pointerId;
+      if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+      emit({ type: 'touch-target', point: touchPoint(event) });
+    });
+    bind(canvas, 'pointermove', (event) => {
+      if (event.pointerType !== 'touch' || event.pointerId !== touchPointerId) return;
+      event.preventDefault();
+      emit({ type: 'touch-target', point: touchPoint(event) });
+    });
+    const stopTouchFly = (event) => {
+      if (event.pointerId !== touchPointerId) return;
+      if (event.preventDefault) event.preventDefault();
+      if (
+        canvas.releasePointerCapture &&
+        canvas.hasPointerCapture &&
+        canvas.hasPointerCapture(event.pointerId)
+      )
+        canvas.releasePointerCapture(event.pointerId);
+      touchPointerId = null;
+      emit({ type: 'touch-end' });
+    };
+    bind(canvas, 'pointerup', stopTouchFly);
+    bind(canvas, 'pointercancel', stopTouchFly);
+    bind(canvas, 'lostpointercapture', stopTouchFly);
     return {
       render,
       isControlsLocked,
