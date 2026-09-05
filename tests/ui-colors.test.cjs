@@ -153,6 +153,11 @@ test('adds a portrait touch-first combat layout without changing desktop columns
   assert.match(compactPage, /maxResponseDistance\s*=\s*180/);
 });
 
+test('keeps resettable touch input mutable in the startup layer', () => {
+  assert.match(page, /let touchInput = \{ active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 \}/);
+  assert.match(page, /function clearTouchInput\(\) \{[\s\S]*?touchInput = \{/);
+});
+
 test('stacks the score-registration form and restart action in the end modal', () => {
   assert.match(compactPage, /\.register-form\s*\{\s*display:\s*grid/);
   assert.match(compactPage, /\.modal-secondary\s*\{\s*width:\s*100%/);

@@ -801,9 +801,9 @@
     <script>
       const canvas = document.querySelector('#game'),
         keys = {},
-        touchInput = { active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 },
         storage = GameStorage.adapter(localStorage);
-      let session = RunSession.create({ rules: GameRules, storage }),
+      let touchInput = { active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 },
+        session = RunSession.create({ rules: GameRules, storage }),
         last = 0,
         touchTarget = null;
       const audio = GameAudio.create({ storage: localStorage });
