@@ -19,6 +19,23 @@ test('moves within the lower sixty percent and supports diagonal input', () => {
   }).state;
   assert.deepEqual([s.player.x, s.player.y], [0, 288]);
 });
+test('supports normalized adaptive analog movement without changing keyboard speed', () => {
+  let s = GameRules.create({ player: { x: 0, y: 288 } });
+  s = run(s, { dt: 100, input: { moveX: 1, moveY: 0, moveSpeedScale: 2.25 } }).state;
+  assert.equal(s.player.x, 72);
+  assert.equal(s.player.y, 288);
+  s = run(GameRules.create({ player: { x: 0, y: 288 } }), {
+    dt: 100,
+    input: { moveX: 1, moveY: 1, moveSpeedScale: 2.25 },
+  }).state;
+  assert.ok(Math.abs(s.player.x - 72 / Math.sqrt(2)) < 0.001);
+  assert.ok(Math.abs(s.player.y - (288 + 72 / Math.sqrt(2))) < 0.001);
+  s = run(GameRules.create({ player: { x: 420, y: 666 } }), {
+    dt: 100,
+    input: { moveX: 1, moveY: 1, moveSpeedScale: 2.25 },
+  }).state;
+  assert.deepEqual([s.player.x, s.player.y], [420, 666]);
+});
 test('fires from the moved player position and double spread produces three shots', () => {
   let s = GameRules.create({
     player: { x: 210, y: 630 },

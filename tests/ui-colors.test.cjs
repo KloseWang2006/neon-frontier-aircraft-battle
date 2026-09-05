@@ -149,6 +149,8 @@ test('adds a portrait touch-first combat layout without changing desktop columns
   assert.match(compactPage, /safe-area-inset-top/);
   assert.match(compactPage, /\.mobile-combat-dock\s*\{[^}]*grid-template-columns:\s*1fr\s+1fr/);
   assert.match(compactPage, /\.status-side,\s*\.action-side\s*\{\s*display:\s*none/);
+  assert.match(compactPage, /moveSpeedScale/);
+  assert.match(compactPage, /maxResponseDistance\s*=\s*180/);
 });
 
 test('stacks the score-registration form and restart action in the end modal', () => {

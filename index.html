@@ -801,7 +801,7 @@
     <script>
       const canvas = document.querySelector('#game'),
         keys = {},
-        touchKeys = {},
+        touchInput = { active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 },
         storage = GameStorage.adapter(localStorage);
       let session = RunSession.create({ rules: GameRules, storage }),
         last = 0,
@@ -825,26 +825,51 @@
       }
       function clearTouchInput() {
         touchTarget = null;
-        for (const direction of ['left', 'right', 'up', 'down']) touchKeys[direction] = false;
+        touchInput = { active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 };
       }
       function updateTouchInput() {
-        if (!touchTarget || session.game.status !== 'running') return;
+        if (!touchTarget || session.game.status !== 'running') {
+          touchInput = { active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 };
+          return;
+        }
         const player = session.game.player,
           dx = touchTarget.x - (player.x + 30),
           dy = touchTarget.y - (player.y + 28),
-          deadZone = 12;
-        touchKeys.left = dx < -deadZone;
-        touchKeys.right = dx > deadZone;
-        touchKeys.up = dy < -deadZone;
-        touchKeys.down = dy > deadZone;
+          distance = Math.hypot(dx, dy),
+          deadZone = 12,
+          maxResponseDistance = 180;
+        if (distance <= deadZone) {
+          touchInput = { active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 };
+          return;
+        }
+        const progress = Math.min(1, (distance - deadZone) / (maxResponseDistance - deadZone));
+        touchInput = {
+          active: true,
+          moveX: dx / distance,
+          moveY: dy / distance,
+          moveSpeedScale: 1 + progress * 1.25,
+        };
       }
       function frameInput() {
+        const keyboardX = (keys.left ? -1 : 0) + (keys.right ? 1 : 0),
+          keyboardY = (keys.up ? -1 : 0) + (keys.down ? 1 : 0);
+        if (!touchInput.active) {
+          return {
+            ...keys,
+            left: Boolean(keys.left),
+            right: Boolean(keys.right),
+            up: Boolean(keys.up),
+            down: Boolean(keys.down),
+          };
+        }
+        const rawX = keyboardX + touchInput.moveX,
+          rawY = keyboardY + touchInput.moveY,
+          magnitude = Math.hypot(rawX, rawY) || 1;
         return {
           ...keys,
-          left: Boolean(keys.left || touchKeys.left),
-          right: Boolean(keys.right || touchKeys.right),
-          up: Boolean(keys.up || touchKeys.up),
-          down: Boolean(keys.down || touchKeys.down),
+          moveX: rawX / magnitude,
+          moveY: rawY / magnitude,
+          moveSpeedScale: touchInput.moveSpeedScale,
         };
       }
       function dispatch(intent) {

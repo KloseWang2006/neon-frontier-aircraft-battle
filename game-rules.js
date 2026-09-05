@@ -589,8 +589,21 @@
     fighter(s).rules.tick(s, ms);
     if (!s.shieldMs) s.shieldAvailable = false;
     s.player.invincibleMs = Math.max(0, s.player.invincibleMs - ms);
-    const dx = (((input.left ? -1 : 0) + (input.right ? 1 : 0)) * fighter(s).speed * ms) / 1000,
-      dy = (((input.up ? -1 : 0) + (input.down ? 1 : 0)) * fighter(s).speed * ms) / 1000;
+    const hasAnalogMove = Number.isFinite(input.moveX) && Number.isFinite(input.moveY);
+    let moveX = hasAnalogMove ? input.moveX : (input.left ? -1 : 0) + (input.right ? 1 : 0),
+      moveY = hasAnalogMove ? input.moveY : (input.up ? -1 : 0) + (input.down ? 1 : 0),
+      speedScale = hasAnalogMove
+        ? Math.max(1, Math.min(2.25, Number(input.moveSpeedScale) || 1))
+        : 1;
+    if (hasAnalogMove) {
+      const magnitude = Math.hypot(moveX, moveY);
+      if (magnitude > 1) {
+        moveX /= magnitude;
+        moveY /= magnitude;
+      }
+    }
+    const dx = (moveX * fighter(s).speed * speedScale * ms) / 1000,
+      dy = (moveY * fighter(s).speed * speedScale * ms) / 1000;
     s.player.x = Math.max(0, Math.min(W - s.player.w, s.player.x + dx));
     s.player.y = Math.max(TOP, Math.min(H - s.player.h, s.player.y + dy));
     playerShot(s, events);
