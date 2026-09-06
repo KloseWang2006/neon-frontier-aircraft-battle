@@ -11,6 +11,7 @@ const runtimeFiles = [
   'run-session.js',
   'game-audio.js',
   'page-presentation.js',
+  'game-application.js',
 ];
 
 rmSync(output, { recursive: true, force: true });

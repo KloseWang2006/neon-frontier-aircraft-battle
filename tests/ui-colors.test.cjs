@@ -54,7 +54,8 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
     compactPage,
     /\.fighter-progress-row\s*\{[^}]*grid-template-columns:\s*minmax\(80px,\s*auto\)\s*minmax\(58px,\s*1fr\)\s*auto\s*auto/,
   );
-  assert.match(compactPage, /PagePresentation\.create\(/);
+  assert.match(compactPage, /GameApplication\.create\(/);
+  assert.match(compactPage, /<script src="game-application\.js"><\/script>/);
   assert.match(compactPresentation, /functionrenderFighterOptions\(\)/);
   assert.match(compactPresentation, /catalog\.list\(\)/);
   assert.match(compactPresentation, /catalog\.get\(state\.fighterId\)/);
@@ -87,7 +88,6 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPresentation, /localOverlay==='guide'/);
   assert.match(compactPresentation, /constisControlsLocked=\(\)=>localOverlay==='guide'/);
   assert.match(compactPresentation, /isControlsLocked,/);
-  assert.match(compactPage, /presentation\.isControlsLocked\(\)/);
   assert.match(
     compactPage,
     /\.btn\.guide-control-locked,\s*\.btn\.main\.guide-control-locked\s*\{/,
@@ -99,7 +99,6 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPresentation, /functionsetSkillCardTheme/);
   assert.match(compactPresentation, /functionrenderFighterSkillProgress/);
   assert.match(compactPresentation, /functionutilityProgress/);
-  assert.match(compactPage, /event\.key === 'q' \|\| event\.key === 'Q'/);
   assert.match(compactPresentation, /functiondrawShockwave\(state,fighter\)/);
   assert.match(compactPresentation, /state\.shockwaveFlashMs<=0/);
   assert.match(compactPresentation, /functiondrawStealth\(state,fighter\)/);
@@ -107,7 +106,6 @@ test('exposes fighter selection, dynamic skill status, Q activation, and both sk
   assert.match(compactPage, /--fighter-rotation/);
   assert.match(compactPresentation, /context\.rotate\(\(rotation\*Math\.PI\)\/180\)/);
   assert.match(compactPresentation, /bullet\.color\|\|/);
-  assert.match(compactPage, /RunSession\.selectFighter/);
   assert.match(compactPresentation, /fighter\.visual\.effect\.kind!=='wingmen'/);
   assert.match(compactPresentation, /functiondrawWingmen\(state,fighter\)/);
   assert.match(compactPresentation, /type:'touch-target'/);
@@ -149,13 +147,6 @@ test('adds a portrait touch-first combat layout without changing desktop columns
   assert.match(compactPage, /safe-area-inset-top/);
   assert.match(compactPage, /\.mobile-combat-dock\s*\{[^}]*grid-template-columns:\s*1fr\s+1fr/);
   assert.match(compactPage, /\.status-side,\s*\.action-side\s*\{\s*display:\s*none/);
-  assert.match(compactPage, /moveSpeedScale/);
-  assert.match(compactPage, /maxResponseDistance\s*=\s*180/);
-});
-
-test('keeps resettable touch input mutable in the startup layer', () => {
-  assert.match(page, /let touchInput = \{ active: false, moveX: 0, moveY: 0, moveSpeedScale: 1 \}/);
-  assert.match(page, /function clearTouchInput\(\) \{[\s\S]*?touchInput = \{/);
 });
 
 test('stacks the score-registration form and restart action in the end modal', () => {

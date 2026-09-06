@@ -2,6 +2,8 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const Catalog = require('../fighter-catalog.js');
 const Presentation = require('../page-presentation.js');
+const Application = require('../game-application.js');
+const Storage = require('../game-storage.js');
 
 class Element {
   constructor(dataset = {}) {
@@ -145,6 +147,101 @@ function makeDocument() {
   canvas.releasePointerCapture = () => (canvas.pointerId = null);
   return { document, canvas, elements, dynamic, directions, fighters, calls };
 }
+
+test('真实呈现点击启动后推进会话，拖动取消与说明锁定贯通启动协调', () => {
+  const fake = makeDocument();
+  const keyboard = new Element(),
+    window = new Element();
+  fake.document.addEventListener = keyboard.addEventListener.bind(keyboard);
+  fake.document.removeEventListener = keyboard.removeEventListener.bind(keyboard);
+  const query = fake.document.querySelector;
+  fake.document.querySelector = (selector) =>
+    selector === '#game' ? fake.canvas : query(selector);
+  const frames = new Map();
+  let id = 0,
+    now = 0,
+    latest;
+  const tick = () => {
+    now += 16;
+    const callbacks = [...frames.values()];
+    frames.clear();
+    callbacks.forEach((fn) => fn(now));
+  };
+  const app = Application.create({
+    document: fake.document,
+    window,
+    storage: Storage.adapter(Storage.memory()),
+    audio: {
+      unlock() {},
+      play() {},
+      consume() {},
+      destroy() {},
+      isEnabled: () => false,
+      toggle: () => false,
+    },
+    presentationFactory(options) {
+      const page = Presentation.create(options);
+      return {
+        ...page,
+        render(value) {
+          latest = structuredClone(value);
+          page.render(value);
+        },
+      };
+    },
+    clock: {
+      request(fn) {
+        frames.set(++id, fn);
+        return id;
+      },
+      cancel(key) {
+        frames.delete(key);
+      },
+    },
+    random: () => 0.5,
+  });
+  assert.match(fake.elements['#modal'].innerHTML, /启动战机/);
+  fake.dynamic['#go'].fire('click');
+  tick();
+  assert.equal(latest.game.status, 'running');
+  assert.equal(latest.game.elapsedMs, 16);
+  assert.equal(fake.elements['#overlay'].hidden, true);
+  fake.canvas.fire('pointerdown', {
+    pointerType: 'touch',
+    pointerId: 7,
+    clientX: 120,
+    clientY: 200,
+  });
+  tick();
+  assert.ok(latest.game.player.y < 630);
+  assert.equal(fake.canvas.pointerId, 7);
+  fake.canvas.fire('pointercancel', { pointerType: 'touch', pointerId: 7 });
+  const y = latest.game.player.y;
+  tick();
+  assert.equal(latest.game.player.y, y);
+  assert.equal(fake.canvas.pointerId, null);
+  fake.elements['#mobileMenu'].fire('click');
+  assert.equal(latest.game.status, 'paused');
+  fake.dynamic['#closeMobileMenu'].fire('click');
+  tick();
+  assert.equal(latest.game.status, 'paused');
+  fake.elements['#guideBtn'].fire('click');
+  const elapsed = latest.game.elapsedMs;
+  fake.elements['#pause'].fire('click');
+  fake.elements['#restart'].fire('click');
+  keyboard.fire('keydown', { key: ' ', code: 'Space' });
+  tick();
+  assert.equal(latest.game.status, 'paused');
+  assert.equal(latest.game.elapsedMs, elapsed);
+  fake.dynamic['#closeGuide'].fire('click');
+  fake.elements['#pause'].fire('click');
+  tick();
+  assert.equal(latest.game.status, 'running');
+  fake.elements['#restart'].fire('click');
+  assert.equal(latest.game.elapsedMs, 0);
+  app.destroy();
+  assert.equal(frames.size, 0);
+});
 const snapshot = ({
   game = {},
   view = {},

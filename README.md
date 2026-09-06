@@ -15,7 +15,7 @@
 
 项目的后续优化路线见可离线打开的 [未来优化路线.html](未来优化路线.html)。
 
-`fighter-catalog.js` 集中战机资料、技能规则与视觉描述；`game-rules.js` 负责通用战斗状态推进；`run-session.js` 管理准备、暂停、结束和登记流程；`game-storage.js` 统一管理浏览器本地成绩；`page-presentation.js` 统一处理 Canvas、HUD、弹窗、排行榜和触控意图。`index.html` 只负责启动会话、键盘输入与动画循环。
+`fighter-catalog.js` 集中战机资料、技能规则与视觉描述；`game-rules.js` 负责通用战斗状态推进；`run-session.js` 管理准备、暂停、结束和登记流程；`game-storage.js` 统一管理浏览器本地成绩；`page-presentation.js` 统一处理 Canvas、HUD、弹窗、排行榜和触控意图。`game-application.js` 统一管理输入、意图分派、会话推进、音效事件和动画循环。`index.html` 只保留页面结构、样式与初始化。
 
 ## 操作说明
 
@@ -92,7 +92,8 @@ Boss 会在战场上方横移，并交替使用扇形与三连弹幕。击败 10
 
 ```text
 飞机大战/
-├── index.html            # 页面结构、会话启动、键盘输入与动画循环
+├── index.html            # 页面结构、样式与初始化
+├── game-application.js   # 启动与输入协调 module
 ├── page-presentation.js  # 页面呈现 module：Canvas、HUD、弹窗、触控与排行榜
 ├── fighter-catalog.js     # 战机与技能目录 module
 ├── game-rules.js          # 纯游戏规则 module：状态推进与本帧事件
@@ -104,6 +105,7 @@ Boss 会在战场上方横移，并交替使用扇形与三连弹幕。击败 10
 ├── tests/
 │   ├── fighter-catalog.test.cjs # 战机目录测试
 │   ├── game-rules.test.cjs  # 可重复运行的规则测试
+│   ├── game-application.test.cjs # 执行启动、输入、帧推进和销毁测试
 │   ├── run-session.test.cjs # 生命周期测试
 │   ├── game-storage.test.cjs # 本地存储测试
 │   ├── game-audio.test.cjs # 假 AudioContext 音效测试
@@ -139,7 +141,21 @@ npm install
 npm run check
 ```
 
-该命令会检查格式、生产 JavaScript 语法，以及固定输入下的规则、会话、存储和呈现测试。开发依赖仅用于验证，不会影响双击 `index.html` 的离线游玩。
+该命令会检查格式、生产 JavaScript 语法，以及固定输入下的规则、会话、存储、呈现和启动协调测试。开发依赖仅用于验证，不会影响双击 `index.html` 的离线游玩。
+
+### 启动协调的验证方式
+
+`GameApplication.create(options)` 创建后即完成监听、首次渲染和唯一动画循环，返回 `dispatch(intent)` 与 `destroy()`。生产使用浏览器动画时钟，测试注入 `request(callback) / cancel(id)` 手动时钟；存储、音效和呈现工厂也可替换。会话与规则在测试中使用真实实现，不通过改写游戏快照制造结果。
+
+键盘、方向按钮与战场触点分别维护；暂停、重开和失焦清除输入，Q/E 指令每帧最多消费一次。`destroy()` 取消循环与监听并释放呈现和音效，可重复调用。说明与菜单的本地状态仍由页面呈现 module 管理。
+
+单独执行协调与实际呈现联动测试：
+
+```bash
+node --test tests/game-application.test.cjs tests/page-presentation.test.cjs
+```
+
+这些执行测试不等于手机真机验收；发布前仍应实际检查 iPhone Safari 与 Android Chrome。
 
 ## Cloudflare Pages 部署
 
